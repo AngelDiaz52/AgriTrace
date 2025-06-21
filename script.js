@@ -1,5 +1,45 @@
 // Initialize the map
 const map = L.map('map').setView([20.5937, 78.9629], 5); // Default view on India
+// Feature group to hold drawn shapes
+const drawnItems = new L.FeatureGroup();
+map.addLayer(drawnItems);
+
+// Drawing controls
+const drawControl = new L.Control.Draw({
+  edit: { featureGroup: drawnItems },
+  draw: {
+    polygon: true,
+    rectangle: true,
+    polyline: false,
+    circle: false,
+    marker: false
+  }
+});
+map.addControl(drawControl);
+map.on(L.Draw.Event.CREATED, function (event) {
+  const layer = event.layer;
+  const id = Date.now();
+
+  const todoText = prompt("Enter tasks for this field (separate by commas):");
+  const todos = todoText ? todoText.split(',').map(t => t.trim()) : [];
+
+  layer.todoId = id;
+  layer.todos = todos;
+
+  const popup = generateChecklistHTML(todos);
+  layer.bindPopup(popup);
+  drawnItems.addLayer(layer);
+  saveToLocalStorage();
+});
+function generateChecklistHTML(todos) {
+  if (todos.length === 0) return "<p>No tasks added</p>";
+
+  return `
+    <ul style="list-style:none; padding-left: 0;">
+      ${todos.map(todo => `<li><input type="checkbox"> ${todo}</li>`).join('')}
+    </ul>
+  `;
+}
 
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
   attribution: 'Tiles © Esri & contributors'
@@ -69,3 +109,34 @@ function centerMapByZip() {
     })
     .catch(() => alert("Error locating ZIP code."));
 }
+function saveToLocalStorage() {
+  const data = [];
+  drawnItems.eachLayer(layer => {
+    if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
+      data.push({
+        type: layer instanceof L.Rectangle ? "rectangle" : "polygon",
+        coords: layer.getLatLngs(),
+        todos: layer.todos
+      });
+    }
+  });
+  localStorage.setItem('fields', JSON.stringify(data));
+}
+
+function loadFromLocalStorage() {
+  const data = JSON.parse(localStorage.getItem('fields') || '[]');
+  data.forEach(item => {
+    let layer;
+    if (item.type === 'rectangle') {
+      layer = L.rectangle(item.coords);
+    } else {
+      layer = L.polygon(item.coords);
+    }
+
+    layer.todos = item.todos;
+    layer.bindPopup(generateChecklistHTML(item.todos));
+    drawnItems.addLayer(layer);
+  });
+}
+
+loadFromLocalStorage();
