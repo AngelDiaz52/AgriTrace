@@ -5,6 +5,7 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/
   attribution: 'Tiles © Esri & contributors'
 }).addTo(map);
 
+
 // Set up feature group for drawn items
 const drawnItems = new L.FeatureGroup();
 map.addLayer(drawnItems);
