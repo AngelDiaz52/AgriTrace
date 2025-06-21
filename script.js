@@ -21,16 +21,34 @@ map.on(L.Draw.Event.CREATED, function (event) {
   const id = Date.now();
 
   const todoText = prompt("Enter tasks for this field (separate by commas):");
-  const todos = todoText ? todoText.split(',').map(t => t.trim()) : [];
+ const todos = todoText
+  ? todoText.split(',').map(t => ({ text: t.trim(), done: false }))
+  : [];
+
 
   layer.todoId = id;
   layer.todos = todos;
 
-  const popup = generateChecklistHTML(todos);
-  layer.bindPopup(popup);
-  drawnItems.addLayer(layer);
-  saveToLocalStorage();
-});
+  function generateChecklistHTML(todos, id) {
+  if (!Array.isArray(todos)) return "<p>No tasks found</p>";
+
+  return `
+    <div data-id="${id}">
+      <ul style="list-style: none; padding-left: 0;">
+        ${todos.map((todo, index) => `
+          <li>
+            <input type="checkbox" ${todo.done ? 'checked' : ''} onchange="toggleTask(${id}, ${index})">
+            <span>${todo.text}</span>
+            <button onclick="deleteTask(${id}, ${index})" style="margin-left:5px;">🗑</button>
+          </li>
+        `).join('')}
+      </ul>
+      <input type="text" id="new-task-${id}" placeholder="New task" />
+      <button onclick="addTask(${id})">➕ Add Task</button>
+    </div>
+  `;
+}
+
 function generateChecklistHTML(todos) {
   if (todos.length === 0) return "<p>No tasks added</p>";
 
@@ -134,9 +152,64 @@ function loadFromLocalStorage() {
     }
 
     layer.todos = item.todos;
-    layer.bindPopup(generateChecklistHTML(item.todos));
+  layer.bindPopup(generateChecklistHTML(todos, id));
+
     drawnItems.addLayer(layer);
   });
 }
 
 loadFromLocalStorage();
+function toggleTask(layerId, taskIndex) {
+  const data = JSON.parse(localStorage.getItem('fields') || '[]');
+  const field = data.find(f => f.id === layerId);
+  if (field) {
+    field.todos[taskIndex].done = !field.todos[taskIndex].done;
+    localStorage.setItem('fields', JSON.stringify(data));
+    reloadShapes(); // update the map display
+  }
+}
+
+function deleteTask(layerId, taskIndex) {
+  const data = JSON.parse(localStorage.getItem('fields') || '[]');
+  const field = data.find(f => f.id === layerId);
+  if (field) {
+    field.todos.splice(taskIndex, 1);
+    localStorage.setItem('fields', JSON.stringify(data));
+    reloadShapes();
+  }
+}
+
+function addTask(layerId) {
+  const input = document.getElementById(`new-task-${layerId}`);
+  const newTask = input.value.trim();
+  if (!newTask) return;
+
+  const data = JSON.parse(localStorage.getItem('fields') || '[]');
+  const field = data.find(f => f.id === layerId);
+  if (field) {
+    field.todos.push({ text: newTask, done: false });
+    localStorage.setItem('fields', JSON.stringify(data));
+    reloadShapes();
+  }
+}
+
+function reloadShapes() {
+  drawnItems.clearLayers();
+  loadFromLocalStorage();
+}
+map.on(L.Draw.Event.CREATED, function (event) {
+  const layer = event.layer;
+  const id = Date.now();
+
+  const todoText = prompt("Enter tasks for this field (separate by commas):");
+  const todos = todoText
+    ? todoText.split(',').map(t => ({ text: t.trim(), done: false }))
+    : [];
+
+  layer.todoId = id;
+  layer.todos = todos;
+
+  layer.bindPopup(generateChecklistHTML(todos, id));
+  drawnItems.addLayer(layer);
+  saveToLocalStorage();
+});
