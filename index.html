@@ -2,39 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AgriTrace - From Field to Future</title>
-<!-- Leaflet.draw CSS -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AgriTrace - Washington State Map</title>
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <!-- Leaflet Draw CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
 
-  <!-- Custom Styles -->
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; }
+    #map { height: 100vh; width: 100vw; }
+  </style>
 </head>
 <body>
-  <div id="container">
-    <!-- Sidebar for farms and fields -->
-    <div id="sidebar">
-      <h2>AgriTrace 🌿</h2>
-      <h3>Add Farm</h3>
-      <input type="text" id="farm-name" placeholder="Farm Name" />
-      <button onclick="addFarm()">Add Farm</button>
 
-      <div id="farm-list"></div>
-    </div>
+  <div id="map"></div>
 
-    <!-- Map Area -->
-    <div id="map"></div>
-  </div>
-    <!-- Leaflet JS -->
+  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Leaflet Draw JS -->
   <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
 
-  <!-- Your JavaScript -->
-  <script src="script.js"></script>
-</body>
+  <script>
+    // Initialize map centered on Washington State
+    const map = L.map('map').setView([47.6062, -122.3321], 7);
 
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Feature group to hold drawn shapes
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    // Draw control options (enable polygon and rectangle)
+    const drawControl = new L.Control.Draw({
+      edit: { featureGroup: drawnItems },
+      draw: {
+        polygon: true,
+        rectangle: true,
+        polyline: false,
+        circle: false,
+        marker: false
+      }
+    });
+    map.addControl(drawControl);
+
+    // When a new shape is created, add it to the map
+    map.on(L.Draw.Event.CREATED, function (event) {
+      const layer = event.layer;
+      drawnItems.addLayer(layer);
+      alert('Shape added!');
+    });
+  </script>
+</body>
 </html>
