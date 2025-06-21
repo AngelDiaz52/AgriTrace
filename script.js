@@ -213,3 +213,38 @@ map.on(L.Draw.Event.CREATED, function (event) {
   drawnItems.addLayer(layer);
   saveToLocalStorage();
 });
+let farms = JSON.parse(localStorage.getItem("farms")) || [];
+
+function addFarm() {
+  const name = document.getElementById("farm-name").value.trim();
+  if (!name) return;
+
+  const farm = {
+    id: Date.now(),
+    name: name,
+    fields: []
+  };
+
+  farms.push(farm);
+  localStorage.setItem("farms", JSON.stringify(farms));
+  document.getElementById("farm-name").value = "";
+  renderFarms();
+}
+
+function renderFarms() {
+  const farmList = document.getElementById("farm-list");
+  farmList.innerHTML = "";
+
+  farms.forEach(farm => {
+    const div = document.createElement("div");
+    div.className = "farm-block";
+    div.innerHTML = `
+      <h4>${farm.name}</h4>
+      <p>Fields: ${farm.fields.length}</p>
+    `;
+    farmList.appendChild(div);
+  });
+}
+
+// Load farms on page load
+renderFarms();
