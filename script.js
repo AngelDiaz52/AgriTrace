@@ -56,3 +56,16 @@ map.on('draw:created', function (e) {
   layer.bindPopup(`Crop: ${fieldData.crop}`);
   alert("Field saved!");
 });
+function centerMapByZip() {
+  const zip = document.getElementById('zipInput').value.trim();
+  if (!zip) return alert("Please enter a ZIP code.");
+
+  fetch(`https://nominatim.openstreetmap.org/search?postalcode=${zip}&country=USA&format=json`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.length === 0) return alert("ZIP code not found.");
+      const { lat, lon } = data[0];
+      map.setView([lat, lon], 13);
+    })
+    .catch(() => alert("Error locating ZIP code."));
+}
