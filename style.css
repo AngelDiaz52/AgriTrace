@@ -29,3 +29,31 @@ h1 {
   margin-top: 0;
   border-top: 2px solid #e0e0e0;
 }
+.zip-search {
+  padding: 1rem;
+  text-align: center;
+  background-color: #e6f7df;
+}
+
+.zip-search input {
+  padding: 0.5rem;
+  font-size: 1rem;
+  width: 200px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.zip-search button {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  margin-left: 0.5rem;
+  background-color: #56ab2f;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.zip-search button:hover {
+  background-color: #4a9828;
+}
