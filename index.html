@@ -3,402 +3,59 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AgriTrace - From Field to Future</title>
+<title>AgriTrace - Detailed Satellite Map</title>
 
 <!-- Leaflet CSS -->
 <link
   rel="stylesheet"
   href="https://unpkg.com/leaflet/dist/leaflet.css"
 />
+
 <!-- Leaflet Draw CSS -->
 <link
   rel="stylesheet"
   href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css"
 />
 
-<style>
-  body, html {
-    margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f4f7f3;
-  }
-  #container {
-    display: flex; height: 100vh; overflow: hidden;
-  }
-  #sidebar {
-    width: 320px; background: #f8f9fa; padding: 15px; border-right: 1px solid #ccc; overflow-y: auto;
-  }
-  #sidebar h2 {
-    margin-top: 0; color: #388e3c; text-align: center;
-  }
-  #sidebar input[type="text"] {
-    width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px;
-    box-sizing: border-box;
-  }
-  #sidebar button {
-    width: 100%; padding: 8px; background-color: #4caf50; color: white; border: none; border-radius: 4px;
-    cursor: pointer; font-weight: bold;
-  }
-  #sidebar button:hover {
-    background-color: #45a049;
-  }
-  .farm-block {
-    margin-top: 15px; padding: 10px; border: 1px solid #ddd; background-color: white; border-radius: 5px;
-  }
-  .farm-block h4 {
-    margin: 0 0 5px; font-size: 1.1em; color: #2e7d32;
-  }
-  .farm-fields {
-    font-size: 0.9em; color: #555;
-  }
-  #map {
-    flex: 1;
-    height: 100vh;
-  }
-  .task-list {
-    list-style: none;
-    padding-left: 0;
-  }
-  .task-list li {
-    margin-bottom: 5px;
-    display: flex;
-    align-items: center;
-  }
-  .task-list input[type=checkbox] {
-    margin-right: 8px;
-  }
-  .task-list button {
-    margin-left: auto;
-    background: none;
-    border: none;
-    color: red;
-    font-size: 1.1em;
-    cursor: pointer;
-  }
-  .task-list button:hover {
-    color: darkred;
-  }
-  .add-task {
-    margin-top: 5px;
-    display: flex;
-  }
-  .add-task input[type="text"] {
-    flex: 1;
-    padding: 6px;
-    border: 1px solid #ccc;
-    border-radius: 4px 0 0 4px;
-  }
-  .add-task button {
-    padding: 6px 12px;
-    border-radius: 0 4px 4px 0;
-    background-color: #4caf50;
-    color: white;
-    border: none;
-    cursor: pointer;
-  }
-  .add-task button:hover {
-    background-color: #45a049;
-  }
-</style>
+<!-- Custom Styles -->
+<link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
 <div id="container">
-  <div id="sidebar">
-    <h2>AgriTrace 🌿</h2>
 
-    <h3>Add Farm</h3>
-    <input id="farm-name" type="text" placeholder="Farm Name" />
-    <button onclick="addFarm()">Add Farm</button>
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <h1>AgriTrace 🌿</h1>
+    <section class="farm-section">
+      <h2>Add Farm</h2>
+      <input
+        id="farm-name"
+        type="text"
+        placeholder="Farm Name"
+        autocomplete="off"
+      />
+      <button id="add-farm-btn">Add Farm</button>
+    </section>
 
-    <div id="farm-list"></div>
-  </div>
+    <section class="farms-list-section">
+      <h2>Your Farms</h2>
+      <div id="farm-list"></div>
+    </section>
+  </aside>
 
-  <div id="map"></div>
+  <!-- Map -->
+  <main id="map"></main>
 </div>
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <!-- Leaflet Draw JS -->
 <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
 
-<script>
-  // Initialize map centered on Washington State
-  const map = L.map('map').setView([47.6062, -122.3321], 7);
-
-  // Add OpenStreetMap tiles
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-  }).addTo(map);
-
-  // FeatureGroup to hold drawn shapes
-  const drawnItems = new L.FeatureGroup();
-  map.addLayer(drawnItems);
-
-  // Farms array from localStorage or empty
-  let farms = JSON.parse(localStorage.getItem('farms')) || [];
-  // Fields map (fieldId -> { farmId, layer, todos })
-  const fields = new Map();
-
-  // Draw control: allow polygon and rectangle
-  const drawControl = new L.Control.Draw({
-    edit: { featureGroup: drawnItems },
-    draw: {
-      polygon: true,
-      rectangle: true,
-      polyline: false,
-      circle: false,
-      marker: false,
-      circlemarker: false
-    }
-  });
-  map.addControl(drawControl);
-
-  // Generate checklist HTML for popup
-  function generateChecklistHTML(fieldId) {
-    const fieldData = fields.get(fieldId);
-    if (!fieldData) return '<p>No data found</p>';
-
-    const todos = fieldData.todos || [];
-    return `
-      <div data-id="${fieldId}">
-        <ul class="task-list">
-          ${todos.map((todo, index) => `
-            <li>
-              <input type="checkbox" ${todo.done ? 'checked' : ''} onchange="toggleTask(${fieldId}, ${index})" />
-              <span>${todo.text}</span>
-              <button onclick="deleteTask(${fieldId}, ${index})" title="Delete task">×</button>
-            </li>
-          `).join('')}
-        </ul>
-        <div class="add-task">
-          <input type="text" id="new-task-${fieldId}" placeholder="New task" />
-          <button onclick="addTask(${fieldId})">Add</button>
-        </div>
-      </div>
-    `;
-  }
-
-  // Add farm function
-  function addFarm() {
-    const nameInput = document.getElementById('farm-name');
-    const name = nameInput.value.trim();
-    if (!name) {
-      alert('Please enter a farm name');
-      return;
-    }
-
-    const farm = {
-      id: Date.now(),
-      name: name,
-      fields: []
-    };
-    farms.push(farm);
-    saveFarms();
-    renderFarms();
-    nameInput.value = '';
-  }
-
-  // Render farms in sidebar
-  function renderFarms() {
-    const farmList = document.getElementById('farm-list');
-    farmList.innerHTML = '';
-
-    farms.forEach(farm => {
-      const div = document.createElement('div');
-      div.className = 'farm-block';
-      div.innerHTML = `
-        <h4>${farm.name}</h4>
-        <p class="farm-fields">Fields: ${farm.fields.length}</p>
-      `;
-      farmList.appendChild(div);
-    });
-  }
-
-  // Save farms to localStorage
-  function saveFarms() {
-    localStorage.setItem('farms', JSON.stringify(farms));
-  }
-
-  // Save fields and farms data to localStorage
-  function saveAllData() {
-    // Save fields: array of objects {id, farmId, type, coords, todos}
-    const fieldsData = [];
-    drawnItems.eachLayer(layer => {
-      const fieldId = layer._fieldId;
-      if (!fieldId) return;
-      const farmId = fields.get(fieldId)?.farmId;
-      const coords = layer.getLatLngs();
-      const type = layer instanceof L.Rectangle ? 'rectangle' : 'polygon';
-      const todos = fields.get(fieldId)?.todos || [];
-      fieldsData.push({ id: fieldId, farmId, type, coords, todos });
-    });
-    localStorage.setItem('fields', JSON.stringify(fieldsData));
-    saveFarms();
-  }
-
-  // Load farms and fields from localStorage on startup
-  function loadAllData() {
-    farms = JSON.parse(localStorage.getItem('farms')) || [];
-    renderFarms();
-
-    const fieldsData = JSON.parse(localStorage.getItem('fields')) || [];
-    fieldsData.forEach(item => {
-      let layer;
-      if (item.type === 'rectangle') {
-        layer = L.rectangle(item.coords);
-      } else {
-        layer = L.polygon(item.coords);
-      }
-      layer._fieldId = item.id;
-      fields.set(item.id, {
-        farmId: item.farmId,
-        layer: layer,
-        todos: item.todos || []
-      });
-
-      layer.bindPopup(generateChecklistHTML(item.id), { maxWidth: 300 });
-      drawnItems.addLayer(layer);
-
-      // Also add field ID to farm's fields array if not already
-      const farm = farms.find(f => f.id === item.farmId);
-      if (farm && !farm.fields.includes(item.id)) {
-        farm.fields.push(item.id);
-      }
-    });
-    saveFarms();
-  }
-
-  // Handle draw created event
-  map.on(L.Draw.Event.CREATED, function(event) {
-    const layer = event.layer;
-
-    // Ask user to select farm for this field
-    if (farms.length === 0) {
-      alert('Please add at least one farm before drawing fields.');
-      return;
-    }
-
-    // Prompt user to pick a farm from list
-    let farmOptions = 'Select farm ID for this field:\n';
-    farms.forEach(f => {
-      farmOptions += `${f.id}: ${f.name}\n`;
-    });
-    const farmIdInput = prompt(farmOptions);
-    if (!farmIdInput) {
-      alert('Field drawing canceled (no farm selected).');
-      return;
-    }
-    const farmId = parseInt(farmIdInput);
-    const farm = farms.find(f => f.id === farmId);
-    if (!farm) {
-      alert('Invalid farm ID selected.');
-      return;
-    }
-
-    // Create new field ID
-    const fieldId = Date.now();
-    layer._fieldId = fieldId;
-
-    // Prompt for initial tasks
-    const todoText = prompt("Enter tasks for this field (separate by commas):");
-    const todos = todoText
-      ? todoText.split(',').map(t => ({ text: t.trim(), done: false }))
-      : [];
-
-    // Save field info in fields map
-    fields.set(fieldId, {
-      farmId: farmId,
-      layer: layer,
-      todos: todos
-    });
-
-    // Add field ID to farm's fields
-    farm.fields.push(fieldId);
-
-    // Add layer to map
-    drawnItems.addLayer(layer);
-
-    // Bind popup with checklist
-    layer.bindPopup(generateChecklistHTML(fieldId), { maxWidth: 300 });
-
-    // Save all data
-    saveAllData();
-
-    // Open popup immediately so user can interact
-    layer.openPopup();
-
-    // Refresh sidebar farms list to update field counts
-    renderFarms();
-  });
-
-  // Task toggle, add, delete functions called from popup HTML
-
-  window.toggleTask = function(fieldId, taskIndex) {
-    const field = fields.get(fieldId);
-    if (!field) return;
-    field.todos[taskIndex].done = !field.todos[taskIndex].done;
-    saveAllData();
-    // Refresh popup content
-    field.layer.setPopupContent(generateChecklistHTML(fieldId));
-  };
-
-  window.deleteTask = function(fieldId, taskIndex) {
-    const field = fields.get(fieldId);
-    if (!field) return;
-    field.todos.splice(taskIndex, 1);
-    saveAllData();
-    field.layer.setPopupContent(generateChecklistHTML(fieldId));
-  };
-
-  window.addTask = function(fieldId) {
-    const input = document.getElementById(`new-task-${fieldId}`);
-    if (!input) return;
-    const text = input.value.trim();
-    if (!text) return alert('Please enter a task');
-    const field = fields.get(fieldId);
-    if (!field) return;
-    field.todos.push({ text, done: false });
-    input.value = '';
-    saveAllData();
-    field.layer.setPopupContent(generateChecklistHTML(fieldId));
-  };
-
-  // Edit events to update localStorage
-  map.on('draw:edited', function(e) {
-    e.layers.eachLayer(layer => {
-      const fieldId = layer._fieldId;
-      if (!fieldId) return;
-      const field = fields.get(fieldId);
-      if (!field) return;
-      field.layer = layer;
-    });
-    saveAllData();
-  });
-
-  // Delete event to remove fields & update farms
-  map.on('draw:deleted', function(e) {
-    e.layers.eachLayer(layer => {
-      const fieldId = layer._fieldId;
-      if (!fieldId) return;
-      const field = fields.get(fieldId);
-      if (!field) return;
-
-      // Remove field from farm's list
-      const farm = farms.find(f => f.id === field.farmId);
-      if (farm) {
-        farm.fields = farm.fields.filter(id => id !== fieldId);
-      }
-
-      // Remove from fields map
-      fields.delete(fieldId);
-    });
-    saveAllData();
-    renderFarms();
-  });
-
-  // On load, load all data
-  loadAllData();
-</script>
+<!-- Your Script -->
+<script src="script.js"></script>
 
 </body>
 </html>
