@@ -1,9 +1,8 @@
 // Initialize the map
 const map = L.map('map').setView([20.5937, 78.9629], 5); // Default view on India
 
-// Load OpenStreetMap tiles
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap contributors'
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Tiles © Esri & contributors'
 }).addTo(map);
 
 // Set up feature group for drawn items
