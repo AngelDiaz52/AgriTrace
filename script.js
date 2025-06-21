@@ -48,16 +48,26 @@ map.on(L.Draw.Event.CREATED, function (event) {
     </div>
   `;
 }
-
-function generateChecklistHTML(todos) {
-  if (todos.length === 0) return "<p>No tasks added</p>";
+function generateChecklistHTML(todos, id) {
+  if (!Array.isArray(todos)) return "<p>No tasks found</p>";
 
   return `
-    <ul style="list-style:none; padding-left: 0;">
-      ${todos.map(todo => `<li><input type="checkbox"> ${todo}</li>`).join('')}
-    </ul>
+    <div data-id="${id}">
+      <ul style="list-style: none; padding-left: 0;">
+        ${todos.map((todo, index) => `
+          <li>
+            <input type="checkbox" ${todo.done ? 'checked' : ''} onchange="toggleTask(${id}, ${index})">
+            <span>${todo.text}</span>
+            <button onclick="deleteTask(${id}, ${index})" style="margin-left:5px;">🗑</button>
+          </li>
+        `).join('')}
+      </ul>
+      <input type="text" id="new-task-${id}" placeholder="New task" />
+      <button onclick="addTask(${id})">➕ Add Task</button>
+    </div>
   `;
 }
+
 
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
   attribution: 'Tiles © Esri & contributors'
@@ -65,8 +75,6 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/
 
 
 // Set up feature group for drawn items
-const drawnItems = new L.FeatureGroup();
-map.addLayer(drawnItems);
 
 // Add draw controls
 const drawControl = new L.Control.Draw({
@@ -132,6 +140,7 @@ function saveToLocalStorage() {
   drawnItems.eachLayer(layer => {
     if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
       data.push({
+        id: layer.todoId, // ✅ include ID
         type: layer instanceof L.Rectangle ? "rectangle" : "polygon",
         coords: layer.getLatLngs(),
         todos: layer.todos
@@ -140,6 +149,7 @@ function saveToLocalStorage() {
   });
   localStorage.setItem('fields', JSON.stringify(data));
 }
+
 
 function loadFromLocalStorage() {
   const data = JSON.parse(localStorage.getItem('fields') || '[]');
@@ -151,12 +161,14 @@ function loadFromLocalStorage() {
       layer = L.polygon(item.coords);
     }
 
-    layer.todos = item.todos;
-  layer.bindPopup(generateChecklistHTML(todos, id));
+    layer.todoId = item.id;          // ✅ restore the ID
+    layer.todos = item.todos || [];  // ✅ restore the todos list
+    layer.bindPopup(generateChecklistHTML(item.todos, item.id));
 
     drawnItems.addLayer(layer);
   });
 }
+
 
 loadFromLocalStorage();
 function toggleTask(layerId, taskIndex) {
