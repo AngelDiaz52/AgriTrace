@@ -15,25 +15,20 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1>🌾 AgriTrace</h1>
-    <p class="tagline">From Field to Future — Seamless Farm Tracking.</p>
-  </header>
-  <div class="zip-search">
-  <input type="text" id="zipInput" placeholder="Enter ZIP code..." />
-  <button onclick="centerMapByZip()">Go</button>
-</div>
+  <div id="container">
+    <!-- Sidebar for farms and fields -->
+    <div id="sidebar">
+      <h2>AgriTrace 🌿</h2>
+      <h3>Add Farm</h3>
+      <input type="text" id="farm-name" placeholder="Farm Name" />
+      <button onclick="addFarm()">Add Farm</button>
 
-  <div id="map"></div>
+      <div id="farm-list"></div>
+    </div>
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
-
-  <!-- Custom Script -->
-  <script src="script.js"></script>
-<!-- Leaflet.draw JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-
+    <!-- Map Area -->
+    <div id="map"></div>
+  </div>
 </body>
+
 </html>
