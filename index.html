@@ -1,24 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AgriTrace - Detailed Satellite Map</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AgriTrace - Detailed Satellite Map</title>
 
-<!-- Leaflet CSS -->
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet/dist/leaflet.css"
-/>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
-<!-- Leaflet Draw CSS -->
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css"
-/>
+  <!-- Leaflet Draw CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
 
-<!-- Custom Styles -->
-<link rel="stylesheet" href="style.css" />
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
@@ -27,6 +21,7 @@
   <!-- Sidebar -->
   <aside id="sidebar">
     <h1>AgriTrace 🌿</h1>
+
     <section class="farm-section">
       <h2>Add Farm</h2>
       <input
@@ -41,6 +36,14 @@
     <section class="farms-list-section">
       <h2>Your Farms</h2>
       <div id="farm-list"></div>
+    </section>
+
+    <!-- ✅ NEW Section: Assign New Fields To a Farm -->
+    <section class="farm-selector-section">
+      <h2>Assign New Fields To:</h2>
+      <select id="farmSelector">
+        <option value="">-- Select a Farm --</option>
+      </select>
     </section>
   </aside>
 
