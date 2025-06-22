@@ -18,11 +18,10 @@ const labels = L.tileLayer(
   }
 ).addTo(map);
 
-// Feature group to hold drawn shapes
 const drawnItems = new L.FeatureGroup();
 map.addLayer(drawnItems);
 
-// Add draw controls (polygon and rectangle only)
+// Draw controls
 const drawControl = new L.Control.Draw({
   edit: {
     featureGroup: drawnItems,
@@ -39,24 +38,19 @@ const drawControl = new L.Control.Draw({
 });
 map.addControl(drawControl);
 
-// Utilities for localStorage keys
 const LS_FIELDS_KEY = 'agritrace_fields';
 const LS_FARMS_KEY = 'agritrace_farms';
 
-// Helper: Generate checklist popup HTML for a field
 function generateChecklistHTML(todos, id) {
   if (!Array.isArray(todos) || todos.length === 0)
     return `<p>No tasks yet.</p>`;
-
   return `
   <ul class="task-list">
     ${todos
       .map(
         (todo, i) => `
       <li>
-        <input type="checkbox" data-field-id="${id}" data-task-index="${i}" ${
-          todo.done ? 'checked' : ''
-        }>
+        <input type="checkbox" data-field-id="${id}" data-task-index="${i}" ${todo.done ? 'checked' : ''}>
         <span>${todo.text}</span>
         <button data-field-id="${id}" data-task-index="${i}" title="Delete task">🗑</button>
       </li>`
@@ -68,53 +62,38 @@ function generateChecklistHTML(todos, id) {
   `;
 }
 
-// Load fields from localStorage and add to map
 function loadFields() {
   const fields = JSON.parse(localStorage.getItem(LS_FIELDS_KEY) || '[]');
   drawnItems.clearLayers();
   fields.forEach((field) => {
-    let layer;
-    if (field.type === 'rectangle') {
-      layer = L.rectangle(field.coords);
-    } else {
-      layer = L.polygon(field.coords);
-    }
+    let layer = field.type === 'rectangle'
+      ? L.rectangle(field.coords)
+      : L.polygon(field.coords);
     layer.fieldId = field.id;
     layer.todos = field.todos || [];
-    layer.bindPopup(generateChecklistHTML(layer.todos, field.id));
+    layer.crop = field.crop || 'Unknown';
+    layer.bindPopup(`<strong>Crop:</strong> ${layer.crop}<br>${generateChecklistHTML(layer.todos, layer.fieldId)}`);
     drawnItems.addLayer(layer);
   });
 }
 
-// Save all drawn fields and tasks to localStorage
-function saveFields() {
-  const fields = [];
-  drawnItems.eachLayer((layer) => {
-    if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
-      fields.push({
-        id: layer.fieldId,
-        type: layer instanceof L.Rectangle ? 'rectangle' : 'polygon',
-        coords: layer.getLatLngs(),
-        todos: layer.todos || [],
-      });
-    }
-  });
+function saveFields(fields) {
   localStorage.setItem(LS_FIELDS_KEY, JSON.stringify(fields));
 }
 
-// Farms data
+function getSavedFields() {
+  return JSON.parse(localStorage.getItem(LS_FIELDS_KEY) || '[]');
+}
+
 let farms = JSON.parse(localStorage.getItem(LS_FARMS_KEY) || '[]');
 
-// Render farms in sidebar
 function renderFarms() {
   const farmList = document.getElementById('farm-list');
   farmList.innerHTML = '';
-
   if (farms.length === 0) {
     farmList.innerHTML = '<p>No farms added yet.</p>';
     return;
   }
-
   farms.forEach((farm) => {
     const farmDiv = document.createElement('div');
     farmDiv.className = 'farm-block';
@@ -124,9 +103,20 @@ function renderFarms() {
     `;
     farmList.appendChild(farmDiv);
   });
+  renderFarmSelector();
 }
 
-// Add new farm from input
+function renderFarmSelector() {
+  const selector = document.getElementById('farmSelector');
+  selector.innerHTML = '<option value="">-- Select a Farm --</option>';
+  farms.forEach((farm) => {
+    const option = document.createElement('option');
+    option.value = farm.id;
+    option.textContent = farm.name;
+    selector.appendChild(option);
+  });
+}
+
 function addFarm() {
   const input = document.getElementById('farm-name');
   const name = input.value.trim();
@@ -145,102 +135,87 @@ function addFarm() {
   renderFarms();
 }
 
-// Add farm button event
-document
-  .getElementById('add-farm-btn')
-  .addEventListener('click', addFarm);
+document.getElementById('add-farm-btn').addEventListener('click', addFarm);
 
-// On map draw created: add field, prompt crop and tasks
 map.on(L.Draw.Event.CREATED, function (e) {
   const layer = e.layer;
   const id = Date.now();
 
-  // Prompt for crop type
   const crop = prompt('Enter crop type for this field:', 'Unknown') || 'Unknown';
-
-  // Prompt for tasks
-  const taskText = prompt(
-    'Enter tasks for this field (comma separated):',
-    ''
-  );
+  const taskText = prompt('Enter tasks for this field (comma separated):', '');
   const todos = taskText
     ? taskText.split(',').map((t) => ({ text: t.trim(), done: false }))
     : [];
 
   layer.fieldId = id;
-  layer.todos = todos;
   layer.crop = crop;
+  layer.todos = todos;
 
-  // Bind popup with checklist + crop info
-  layer.bindPopup(
-    `<strong>Crop:</strong> ${crop}<br>${generateChecklistHTML(todos, id)}`
-  );
-
+  layer.bindPopup(`<strong>Crop:</strong> ${crop}<br>${generateChecklistHTML(todos, id)}`);
   drawnItems.addLayer(layer);
 
-  // Save to localStorage
-  saveFields();
+  // Save to local fields
+  const fields = getSavedFields();
+  const newField = {
+    id,
+    type: layer instanceof L.Rectangle ? 'rectangle' : 'polygon',
+    coords: layer.getLatLngs(),
+    crop,
+    todos,
+  };
+  fields.push(newField);
+  saveFields(fields);
 
-  alert('Field added! You can click on shapes to manage tasks.');
+  // Assign to farm
+  const selectedFarmId = Number(document.getElementById('farmSelector').value);
+  const farm = farms.find((f) => f.id === selectedFarmId);
+  if (farm) {
+    farm.fields.push(id);
+    localStorage.setItem(LS_FARMS_KEY, JSON.stringify(farms));
+    renderFarms();
+    alert(`Field added and linked to farm: ${farm.name}`);
+  } else {
+    alert('Field added, but not assigned to a farm.');
+  }
 });
 
-// Handle popup task checkbox toggle and delete buttons
 map.on('popupopen', (e) => {
   const popup = e.popup._contentNode;
 
-  // Checkbox toggles
   popup.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
     checkbox.addEventListener('change', (ev) => {
       const fieldId = Number(ev.target.dataset.fieldId);
       const taskIndex = Number(ev.target.dataset.taskIndex);
-
-      const fields = JSON.parse(localStorage.getItem(LS_FIELDS_KEY) || '[]');
+      const fields = getSavedFields();
       const field = fields.find((f) => f.id === fieldId);
       if (!field) return;
       field.todos[taskIndex].done = ev.target.checked;
-      localStorage.setItem(LS_FIELDS_KEY, JSON.stringify(fields));
+      saveFields(fields);
       loadFields();
     });
   });
 
-  // Delete buttons
   popup.querySelectorAll('button').forEach((btn) => {
     btn.addEventListener('click', (ev) => {
       const fieldId = Number(ev.target.dataset.fieldId);
       const taskIndex = Number(ev.target.dataset.taskIndex);
-
-      const fields = JSON.parse(localStorage.getItem(LS_FIELDS_KEY) || '[]');
+      const fields = getSavedFields();
       const field = fields.find((f) => f.id === fieldId);
       if (!field) return;
       field.todos.splice(taskIndex, 1);
-      localStorage.setItem(LS_FIELDS_KEY, JSON.stringify(fields));
+      saveFields(fields);
       loadFields();
     });
   });
 
-  // Add task button
   const addBtn = popup.querySelector('.add-task-btn');
   if (addBtn) {
     addBtn.addEventListener('click', () => {
       const fieldId = Number(addBtn.dataset.fieldId);
       const input = popup.querySelector(`#new-task-${fieldId}`);
-      if (!input) return;
       const newTaskText = input.value.trim();
       if (!newTaskText) return;
-
-      const fields = JSON.parse(localStorage.getItem(LS_FIELDS_KEY) || '[]');
+      const fields = getSavedFields();
       const field = fields.find((f) => f.id === fieldId);
       if (!field) return;
-      field.todos.push({ text: newTaskText, done: false });
-      localStorage.setItem(LS_FIELDS_KEY, JSON.stringify(fields));
-      input.value = '';
-      loadFields();
-    });
-  }
-});
-
-// Load saved farms and fields on startup
-window.onload = () => {
-  renderFarms();
-  loadFields();
-};
+      field.todos.push({ text: newTaskText, done: false })
