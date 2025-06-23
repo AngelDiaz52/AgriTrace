@@ -2,30 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AgriTrace - Detailed Satellite Map</title>
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-
-  <!-- Leaflet Draw CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
-
-  <!-- Custom Styles -->
-  <link rel="stylesheet" href="style.css" />
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Farm Management Map</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet/dist/leaflet.css"
+  />
   <style>
-    :root {
-      --sidebar-min-width: 200px;
-      --sidebar-max-width: 400px;
-    }
-
-    html, body {
+    body, html {
       margin: 0;
-      padding: 0;
       height: 100%;
-      width: 100%;
-      font-family: Arial, sans-serif;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: #f8faf7;
+      color: #2c3e50;
     }
 
     #container {
@@ -35,120 +24,245 @@
     }
 
     #sidebar {
-      min-width: var(--sidebar-min-width);
-      max-width: var(--sidebar-max-width);
-      width: 300px;
-      padding: 1rem;
-      background-color: #f4f4f4;
+      width: 320px;
+      background: #ffffff;
+      border-right: 1px solid #ddd;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
       overflow-y: auto;
       resize: horizontal;
-      overflow: auto;
+      overflow-x: hidden;
+      min-width: 250px;
+      max-width: 600px;
+      transition: width 0.3s ease;
     }
 
-    #map {
-      flex: 1;
+    #sidebar section {
+      margin-bottom: 1.5rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #fefefe;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
     }
 
-    h1 {
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
+    .section-header {
+      background-color: #f1f1f1;
+      padding: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    h2 {
-      font-size: 1.2rem;
-      margin-top: 1rem;
+    .section-content {
+      padding: 10px;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+      overflow: hidden;
+      max-height: 1000px;
+    }
+
+    .section-content.collapsed {
+      max-height: 0;
+      padding: 0 10px;
     }
 
     input[type="text"] {
       width: 100%;
-      padding: 0.5rem;
-      margin-bottom: 0.5rem;
-      font-size: 1rem;
+      padding: 8px;
+      margin-top: 6px;
+      margin-bottom: 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
     }
 
     button {
-      padding: 0.5rem;
-      font-size: 1rem;
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
       width: 100%;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #219150;
+    }
+
+    #map {
+      flex: 1;
+      height: 100%;
+      width: 100%;
+      position: relative;
+    }
+
+    ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+
+    li {
+      padding: 8px;
+      margin-bottom: 5px;
+      background-color: #ecf9f1;
+      border: 1px solid #cce5d8;
+      border-radius: 4px;
       cursor: pointer;
     }
 
-    .farm-block {
-      margin: 0.5rem 0;
-      padding: 0.5rem;
-      background-color: #eaeaea;
-      border-radius: 5px;
+    #mapSearchBar {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      display: flex;
+      gap: 8px;
+      align-items: center;
     }
 
-    #farmSelector {
-      width: 100%;
-      padding: 0.5rem;
-      font-size: 1rem;
+    #mapSearchBar input {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 250px;
     }
 
-    @media (max-width: 768px) {
-      #container {
-        flex-direction: column;
-      }
+    #mapSearchBar button {
+      padding: 8px 12px;
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
 
-      #sidebar {
-        width: 100%;
-        max-width: none;
-        resize: none;
-        height: auto;
-      }
-
-      #map {
-        height: 70vh;
-      }
+    #mapSearchBar button:hover {
+      background-color: #219150;
     }
   </style>
 </head>
 <body>
+  <div id="container">
+    <div id="sidebar">
+      <section>
+        <div class="section-header">Add Farm</div>
+        <div class="section-content">
+          <label for="farmNameInput">Farm Name:</label>
+          <input type="text" id="farmNameInput" placeholder="Farm Name" />
+          <label for="zipInput">ZIP Code:</label>
+          <input type="text" id="zipInput" placeholder="e.g. 98101" />
+          <button onclick="addFarm()">Add Farm</button>
+          <ul id="farmList"></ul>
+        </div>
+      </section>
+    </div>
+    <div id="map">
+      <div id="mapSearchBar">
+        <input type="text" id="addressInput" placeholder="Enter ZIP or address..." />
+        <button onclick="searchAndCenterMap()">🔍</button>
+      </div>
+    </div>
+  </div>
 
-<div id="container">
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const map = L.map("map").setView([47.6062, -122.3321], 10);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(map);
 
-  <!-- Sidebar -->
-  <aside id="sidebar">
-    <h1>AgriTrace 🌿</h1>
+    let farms = JSON.parse(localStorage.getItem("farms")) || [];
 
-    <section class="farm-section">
-      <h2>Add Farm</h2>
-      <input
-        id="farm-name"
-        type="text"
-        placeholder="Farm Name"
-        autocomplete="off"
-      />
-      <button id="add-farm-btn">Add Farm</button>
-    </section>
+    function saveFarmsToStorage() {
+      localStorage.setItem("farms", JSON.stringify(farms));
+    }
 
-    <section class="farms-list-section">
-      <h2>Your Farms</h2>
-      <div id="farm-list"></div>
-    </section>
+    async function getLatLonFromZip(zipOrAddress) {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+        zipOrAddress
+      )}&format=json&limit=1`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lon: parseFloat(data[0].lon),
+        };
+      }
+      return null;
+    }
 
-    <!-- ✅ NEW Section: Assign New Fields To a Farm -->
-    <section class="farm-selector-section">
-      <h2>Assign New Fields To:</h2>
-      <select id="farmSelector">
-        <option value="">-- Select a Farm --</option>
-      </select>
-    </section>
-  </aside>
+    async function addFarm() {
+      const name = document.getElementById("farmNameInput").value.trim();
+      const zip = document.getElementById("zipInput").value.trim();
+      if (!name || !zip) {
+        alert("Please enter both a farm name and ZIP code.");
+        return;
+      }
 
-  <!-- Map -->
-  <main id="map"></main>
-</div>
+      const location = await getLatLonFromZip(zip);
+      if (!location) {
+        alert("ZIP code not found.");
+        return;
+      }
 
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+      const newFarm = {
+        name,
+        zip,
+        lat: location.lat,
+        lon: location.lon,
+      };
 
-<!-- Leaflet Draw JS -->
-<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+      farms.push(newFarm);
+      saveFarmsToStorage();
+      renderFarmList();
+      document.getElementById("farmNameInput").value = "";
+      document.getElementById("zipInput").value = "";
+      map.setView([location.lat, location.lon], 13);
+    }
 
-<!-- Your Script -->
-<script src="script.js"></script>
+    function renderFarmList() {
+      const list = document.getElementById("farmList");
+      list.innerHTML = "";
+      farms.forEach((farm, index) => {
+        const li = document.createElement("li");
+        li.textContent = `${farm.name} (${farm.zip})`;
+        li.onclick = () => {
+          map.setView([farm.lat, farm.lon], 13);
+        };
+        list.appendChild(li);
+      });
+    }
 
+    async function searchAndCenterMap() {
+      const address = document.getElementById("addressInput").value.trim();
+      if (!address) return;
+
+      const location = await getLatLonFromZip(address);
+      if (location) {
+        map.setView([location.lat, location.lon], 13);
+      } else {
+        alert("Location not found.");
+      }
+    }
+
+    window.onload = () => {
+      document.getElementById("addressInput").focus();
+      renderFarmList();
+    };
+  </script>
 </body>
 </html>
