@@ -1,20 +1,93 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AgriTrace - Map Only</title>
+  <title>AgriTrace – Add Farms</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     html, body {
       margin: 0;
       height: 100%;
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    #container {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #sidebar {
+      width: 320px;
+      min-width: 250px;
+      max-width: 600px;
+      resize: horizontal;
+      overflow-y: auto;
+      background: #fff;
+      border-right: 1px solid #ddd;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    #sidebar h1 {
+      color: #27ae60;
+      border-bottom: 2px solid #27ae60;
+      margin-bottom: 1rem;
+      font-size: 1.8rem;
+    }
+
+    .section {
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    button {
+      margin-top: 10px;
+      width: 100%;
+      padding: 10px;
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #219150;
+    }
+
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    li {
+      padding: 8px;
+      background-color: #ecf9f1;
+      border: 1px solid #cce5d8;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      cursor: pointer;
     }
 
     #map {
-      height: 100%;
-      width: 100%;
+      flex: 1;
       position: relative;
     }
 
@@ -55,54 +128,121 @@
   </style>
 </head>
 <body>
-  <div id="map">
-    <div id="mapSearchBar">
-      <input type="text" id="addressInput" placeholder="Enter ZIP or address..." />
-      <button onclick="searchAndCenterMap()">🔍</button>
+  <div id="container">
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <h1>AgriTrace</h1>
+
+      <div class="section">
+        <label for="farmName">Farm Name:</label>
+        <input type="text" id="farmName" placeholder="e.g. Diaz Orchard" />
+
+        <label for="farmZip">ZIP or Address:</label>
+        <input type="text" id="farmZip" placeholder="e.g. 98101 or Seattle, WA" />
+
+        <button onclick="addFarm()">Add Farm</button>
+      </div>
+
+      <div class="section">
+        <h3>Saved Farms</h3>
+        <ul id="farmList"></ul>
+      </div>
+    </div>
+
+    <!-- Map -->
+    <div id="map">
+      <div id="mapSearchBar">
+        <input type="text" id="addressInput" placeholder="Search ZIP or address..." />
+        <button onclick="searchAndCenterMap()">🔍</button>
+      </div>
     </div>
   </div>
 
+  <!-- Scripts -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
     const map = L.map("map").setView([37.0902, -95.7129], 4); // USA center
 
-    // Esri satellite tile layer
     const satellite = L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
         attribution: 'Tiles &copy; Esri &mdash; Earthstar Geographics',
         maxZoom: 20
       }
     ).addTo(map);
 
-    // Optional: OSM street view toggle
-   const street = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
-  attribution: 'Tiles &copy; Esri &mdash; World Street Map',
-  maxZoom: 20
-});
+    const street = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+      {
+        attribution: 'Tiles &copy; Esri &mdash; World Street Map',
+        maxZoom: 20
+      }
+    );
 
+    L.control.layers({ Satellite: satellite, Street: street }).addTo(map);
 
-    L.control.layers({ "Satellite": satellite, "Street": street }).addTo(map);
+    // Farm Data
+    let farms = JSON.parse(localStorage.getItem("farms") || "[]");
+
+    function saveFarms() {
+      localStorage.setItem("farms", JSON.stringify(farms));
+    }
+
+    function renderFarmList() {
+      const list = document.getElementById("farmList");
+      list.innerHTML = "";
+      farms.forEach((farm, index) => {
+        const li = document.createElement("li");
+        li.textContent = `${farm.name} (${farm.address})`;
+        li.onclick = () => map.setView([farm.lat, farm.lon], 13);
+        list.appendChild(li);
+      });
+    }
+
+    async function geocodeAddress(query) {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+      const res = await fetch(url);
+      const data = await res.json();
+      return data.length ? { lat: +data[0].lat, lon: +data[0].lon } : null;
+    }
+
+    async function addFarm() {
+      const name = document.getElementById("farmName").value.trim();
+      const address = document.getElementById("farmZip").value.trim();
+      if (!name || !address) return alert("Please enter both farm name and ZIP/address");
+
+      const coords = await geocodeAddress(address);
+      if (!coords) return alert("Location not found");
+
+      const farm = {
+        name,
+        address,
+        lat: coords.lat,
+        lon: coords.lon
+      };
+
+      farms.push(farm);
+      saveFarms();
+      renderFarmList();
+      map.setView([coords.lat, coords.lon], 13);
+
+      document.getElementById("farmName").value = "";
+      document.getElementById("farmZip").value = "";
+    }
 
     async function searchAndCenterMap() {
       const query = document.getElementById("addressInput").value.trim();
-      if (!query) return;
-
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.length > 0) {
-          const lat = parseFloat(data[0].lat);
-          const lon = parseFloat(data[0].lon);
-          map.setView([lat, lon], 13);
-        } else {
-          alert("Location not found.");
-        }
-      } catch (e) {
-        alert("Failed to search address.");
-        console.error(e);
+      const coords = await geocodeAddress(query);
+      if (coords) {
+        map.setView([coords.lat, coords.lon], 13);
+      } else {
+        alert("Address not found.");
       }
     }
+
+    window.onload = () => {
+      renderFarmList();
+    };
   </script>
 </body>
 </html>
