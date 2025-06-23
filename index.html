@@ -170,13 +170,17 @@
   <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
   <script>
     const sidebar = document.getElementById("sidebar");
-    document.getElementById("toggleSidebar").onclick = () => {
-      sidebar.classList.toggle("collapsed");
-    };
+    const toggleBtn = document.getElementById("toggleSidebar");
+    if (sidebar && toggleBtn) {
+      toggleBtn.onclick = () => {
+        sidebar.classList.toggle("collapsed");
+      };
+    }
 
     function showTab(id) {
       document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-      document.getElementById(id).classList.add('active');
+      const tabToShow = document.getElementById(id);
+      if (tabToShow) tabToShow.classList.add('active');
     }
 
     const map = L.map("map").setView([37.09, -95.71], 4);
@@ -255,7 +259,8 @@
     function attachClick(layer, label) {
       layer.on("click", () => {
         currentFieldLabel = label;
-        document.getElementById("fieldTitle").textContent = `Tasks for ${label}`;
+        const fieldTitle = document.getElementById("fieldTitle");
+        if (fieldTitle) fieldTitle.textContent = `Tasks for ${label}`;
         renderTaskList();
         showTab("field");
         sidebar.classList.remove("collapsed");
@@ -275,7 +280,7 @@
     function addTaskToField() {
       const input = document.getElementById("newTaskInput");
       const text = input.value.trim();
-      if (text) {
+      if (text && currentFieldLabel) {
         fieldTasks[currentFieldLabel] = fieldTasks[currentFieldLabel] || [];
         fieldTasks[currentFieldLabel].push({ text, done: false });
         input.value = "";
@@ -285,14 +290,18 @@
     }
 
     function toggleTask(i) {
-      fieldTasks[currentFieldLabel][i].done = !fieldTasks[currentFieldLabel][i].done;
-      saveAll();
+      if (currentFieldLabel && fieldTasks[currentFieldLabel]) {
+        fieldTasks[currentFieldLabel][i].done = !fieldTasks[currentFieldLabel][i].done;
+        saveAll();
+      }
     }
 
     function deleteTask(i) {
-      fieldTasks[currentFieldLabel].splice(i, 1);
-      saveAll();
-      renderTaskList();
+      if (currentFieldLabel && fieldTasks[currentFieldLabel]) {
+        fieldTasks[currentFieldLabel].splice(i, 1);
+        saveAll();
+        renderTaskList();
+      }
     }
 
     fields.forEach((geo) => {
