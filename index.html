@@ -27,6 +27,24 @@
       border-right: 1px solid #ddd;
       padding: 20px;
       box-sizing: border-box;
+      transition: transform 0.3s ease;
+      z-index: 999;
+    }
+    #sidebar.collapsed {
+      transform: translateX(-100%);
+    }
+    #toggleSidebar {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1001;
+      background: #27ae60;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
     }
     #sidebar h1 {
       color: #27ae60;
@@ -94,22 +112,51 @@
       cursor: pointer;
       font-weight: bold;
     }
+    .tab-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .tab-buttons button {
+      flex: 1;
+      padding: 10px;
+      font-weight: bold;
+    }
+    .tab {
+      display: none;
+    }
+    .tab.active {
+      display: block;
+    }
   </style>
 </head>
 <body>
+  <button id="toggleSidebar">☰</button>
   <div id="container">
     <div id="sidebar">
       <h1>AgriTrace</h1>
-      <div class="section">
-        <label>Farm Name:</label>
-        <input id="farmName" placeholder="e.g. Diaz Ranch" />
-        <label>ZIP or Address:</label>
-        <input id="farmZip" placeholder="e.g. 90210" />
-        <button onclick="addFarm()">Add Farm</button>
+      <div class="tab-buttons">
+        <button onclick="showTab('home')">Home</button>
+        <button onclick="showTab('field')">Field</button>
       </div>
-      <div class="section">
-        <h3>Saved Farms</h3>
-        <ul id="farmList"></ul>
+      <div id="home" class="tab active">
+        <div class="section">
+          <label>Farm Name:</label>
+          <input id="farmName" placeholder="e.g. Diaz Ranch" />
+          <label>ZIP or Address:</label>
+          <input id="farmZip" placeholder="e.g. 90210" />
+          <button onclick="addFarm()">Add Farm</button>
+        </div>
+        <div class="section">
+          <h3>Saved Farms</h3>
+          <ul id="farmList"></ul>
+        </div>
+      </div>
+      <div id="field" class="tab">
+        <h3 id="fieldTitle">Selected Field</h3>
+        <ul id="taskList" style='list-style:none;padding:0;'></ul>
+        <input id='newTaskInput' placeholder='New task...'>
+        <button onclick='addTaskToField()'>Add</button>
       </div>
     </div>
     <div id="map">
@@ -122,13 +169,19 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
   <script>
+    const sidebar = document.getElementById("sidebar");
+    document.getElementById("toggleSidebar").onclick = () => {
+      sidebar.classList.toggle("collapsed");
+    };
+
+    function showTab(id) {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
     const map = L.map("map").setView([37.09, -95.71], 4);
-    const satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-      attribution: 'Esri', maxZoom: 20
-    }).addTo(map);
-    const street = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
-      attribution: 'Esri Streets'
-    });
+    const satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { attribution: 'Esri', maxZoom: 20 }).addTo(map);
+    const street = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", { attribution: 'Esri Streets' });
     L.control.layers({ Satellite: satellite, Street: street }).addTo(map);
 
     const drawnItems = new L.FeatureGroup();
@@ -141,6 +194,7 @@
     let farms = JSON.parse(localStorage.getItem("farms") || "[]");
     let fields = JSON.parse(localStorage.getItem("fields") || "[]");
     let fieldTasks = JSON.parse(localStorage.getItem("fieldTasks") || "{}");
+    let currentFieldLabel = null;
 
     function saveAll() {
       localStorage.setItem("farms", JSON.stringify(farms));
@@ -194,54 +248,62 @@
         fields.push(geo);
         fieldTasks[label] = fieldTasks[label] || [];
         saveAll();
+        attachClick(layer, label);
       }
     });
+
+    function attachClick(layer, label) {
+      layer.on("click", () => {
+        currentFieldLabel = label;
+        document.getElementById("fieldTitle").textContent = `Tasks for ${label}`;
+        renderTaskList();
+        showTab("field");
+        sidebar.classList.remove("collapsed");
+      });
+    }
+
+    function renderTaskList() {
+      const ul = document.getElementById("taskList");
+      ul.innerHTML = "";
+      (fieldTasks[currentFieldLabel] || []).forEach((task, i) => {
+        const li = document.createElement("li");
+        li.innerHTML = `<input type='checkbox' ${task.done ? "checked" : ""} onchange='toggleTask(${i})'> ${task.text} <button onclick='deleteTask(${i})'>x</button>`;
+        ul.appendChild(li);
+      });
+    }
+
+    function addTaskToField() {
+      const input = document.getElementById("newTaskInput");
+      const text = input.value.trim();
+      if (text) {
+        fieldTasks[currentFieldLabel] = fieldTasks[currentFieldLabel] || [];
+        fieldTasks[currentFieldLabel].push({ text, done: false });
+        input.value = "";
+        saveAll();
+        renderTaskList();
+      }
+    }
+
+    function toggleTask(i) {
+      fieldTasks[currentFieldLabel][i].done = !fieldTasks[currentFieldLabel][i].done;
+      saveAll();
+    }
+
+    function deleteTask(i) {
+      fieldTasks[currentFieldLabel].splice(i, 1);
+      saveAll();
+      renderTaskList();
+    }
 
     fields.forEach((geo) => {
       const layer = L.geoJSON(geo).getLayers()[0];
       const label = geo.properties?.label;
       if (label) {
         layer.bindTooltip(label, { permanent: true }).openTooltip();
-        layer.on("click", () => showChecklist(label));
+        attachClick(layer, label);
         drawnItems.addLayer(layer);
       }
     });
-
-    function showChecklist(label) {
-      const tasks = fieldTasks[label] || [];
-      const html = `
-        <h4>Tasks for ${label}</h4>
-        <ul style='list-style:none;padding:0;'>
-          ${tasks.map((t, i) => `<li><input type='checkbox' ${t.done ? "checked" : ""} onchange='toggleTask("${label}",${i})'> ${t.text} <button onclick='deleteTask("${label}",${i})'>x</button></li>`).join("")}
-        </ul>
-        <input id='newTaskInput' placeholder='New task...'>
-        <button onclick='addTask("${label}")'>Add</button>
-      `;
-      L.popup().setLatLng(map.getCenter()).setContent(html).openOn(map);
-    }
-
-    function addTask(label) {
-      const input = document.getElementById("newTaskInput");
-      const text = input.value.trim();
-      if (text) {
-        fieldTasks[label] = fieldTasks[label] || [];
-        fieldTasks[label].push({ text, done: false });
-        input.value = "";
-        saveAll();
-        showChecklist(label);
-      }
-    }
-
-    function toggleTask(label, i) {
-      fieldTasks[label][i].done = !fieldTasks[label][i].done;
-      saveAll();
-    }
-
-    function deleteTask(label, i) {
-      fieldTasks[label].splice(i, 1);
-      saveAll();
-      showChecklist(label);
-    }
 
     window.onload = renderFarmList;
   </script>
