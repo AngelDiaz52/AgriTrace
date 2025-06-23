@@ -13,6 +13,96 @@
 
   <!-- Custom Styles -->
   <link rel="stylesheet" href="style.css" />
+
+  <style>
+    :root {
+      --sidebar-min-width: 200px;
+      --sidebar-max-width: 400px;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      font-family: Arial, sans-serif;
+    }
+
+    #container {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #sidebar {
+      min-width: var(--sidebar-min-width);
+      max-width: var(--sidebar-max-width);
+      width: 300px;
+      padding: 1rem;
+      background-color: #f4f4f4;
+      overflow-y: auto;
+      resize: horizontal;
+      overflow: auto;
+    }
+
+    #map {
+      flex: 1;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    h2 {
+      font-size: 1.2rem;
+      margin-top: 1rem;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+    }
+
+    button {
+      padding: 0.5rem;
+      font-size: 1rem;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .farm-block {
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      background-color: #eaeaea;
+      border-radius: 5px;
+    }
+
+    #farmSelector {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      #container {
+        flex-direction: column;
+      }
+
+      #sidebar {
+        width: 100%;
+        max-width: none;
+        resize: none;
+        height: auto;
+      }
+
+      #map {
+        height: 70vh;
+      }
+    }
+  </style>
 </head>
 <body>
 
