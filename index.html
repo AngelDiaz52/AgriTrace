@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AgriTrace – Add Farms</title>
+  <title>AgriTrace – Farms & Fields</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
   <style>
     html, body {
       margin: 0;
@@ -83,7 +84,20 @@
       border: 1px solid #cce5d8;
       border-radius: 4px;
       margin-bottom: 6px;
-      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .farm-actions {
+      display: flex;
+      gap: 5px;
+    }
+
+    .farm-actions button {
+      width: auto;
+      padding: 5px 8px;
+      font-size: 0.8rem;
     }
 
     #map {
@@ -147,6 +161,11 @@
         <h3>Saved Farms</h3>
         <ul id="farmList"></ul>
       </div>
+
+      <div class="section">
+        <h3>Draw Fields</h3>
+        <p>Use the map tools to draw a field. Click the shape to name it.</p>
+      </div>
     </div>
 
     <!-- Map -->
@@ -160,20 +179,19 @@
 
   <!-- Scripts -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
   <script>
-    const map = L.map("map").setView([37.0902, -95.7129], 4); // USA center
+    const map = L.map("map").setView([37.0902, -95.7129], 4); // USA
 
     const satellite = L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      {
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
         attribution: 'Tiles &copy; Esri &mdash; Earthstar Geographics',
         maxZoom: 20
       }
     ).addTo(map);
 
     const street = L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-      {
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
         attribution: 'Tiles &copy; Esri &mdash; World Street Map',
         maxZoom: 20
       }
@@ -181,11 +199,34 @@
 
     L.control.layers({ Satellite: satellite, Street: street }).addTo(map);
 
-    // Farm Data
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    const drawControl = new L.Control.Draw({
+      draw: {
+        polygon: true,
+        rectangle: true,
+        circle: true,
+        marker: false,
+        polyline: false
+      },
+      edit: {
+        featureGroup: drawnItems,
+        remove: true
+      }
+    });
+    map.addControl(drawControl);
+
+    // Farm and Field Data
     let farms = JSON.parse(localStorage.getItem("farms") || "[]");
+    let fields = JSON.parse(localStorage.getItem("fields") || "[]");
 
     function saveFarms() {
       localStorage.setItem("farms", JSON.stringify(farms));
+    }
+
+    function saveFields() {
+      localStorage.setItem("fields", JSON.stringify(fields));
     }
 
     function renderFarmList() {
@@ -193,8 +234,12 @@
       list.innerHTML = "";
       farms.forEach((farm, index) => {
         const li = document.createElement("li");
-        li.textContent = `${farm.name} (${farm.address})`;
-        li.onclick = () => map.setView([farm.lat, farm.lon], 13);
+        li.innerHTML = `
+          <span>${farm.name} (${farm.address})</span>
+          <div class="farm-actions">
+            <button onclick="centerFarm(${index})">Go</button>
+            <button onclick="deleteFarm(${index})">🗑️</button>
+          </div>`;
         list.appendChild(li);
       });
     }
@@ -214,35 +259,8 @@
       const coords = await geocodeAddress(address);
       if (!coords) return alert("Location not found");
 
-      const farm = {
-        name,
-        address,
-        lat: coords.lat,
-        lon: coords.lon
-      };
-
+      const farm = { name, address, lat: coords.lat, lon: coords.lon };
       farms.push(farm);
       saveFarms();
       renderFarmList();
-      map.setView([coords.lat, coords.lon], 13);
-
-      document.getElementById("farmName").value = "";
-      document.getElementById("farmZip").value = "";
-    }
-
-    async function searchAndCenterMap() {
-      const query = document.getElementById("addressInput").value.trim();
-      const coords = await geocodeAddress(query);
-      if (coords) {
-        map.setView([coords.lat, coords.lon], 13);
-      } else {
-        alert("Address not found.");
-      }
-    }
-
-    window.onload = () => {
-      renderFarmList();
-    };
-  </script>
-</body>
-</html>
+      map.setVi
