@@ -1,23 +1,26 @@
 let map = L.map('map').setView([37.7749, -122.4194], 10);
 
-const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-street.addTo(map);
+const mapboxToken = 'YOUR_MAPBOX_TOKEN'; // Replace with your actual token
 
+const street = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`, {
+  tileSize: 512,
+  zoomOffset: -1,
+  attribution: '© <a href="https://www.mapbox.com/">Mapbox</a>'
+});
+
+const satellite = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`, {
+  tileSize: 512,
+  zoomOffset: -1,
+  attribution: '© <a href="https://www.mapbox.com/">Mapbox</a>'
+});
+
+street.addTo(map);
 let currentLayer = street;
 
 function toggleView() {
-  if (map.hasLayer(street)) {
-    map.removeLayer(street);
-    const satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-      subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-    });
-    satellite.addTo(map);
-    currentLayer = satellite;
-  } else {
-    map.removeLayer(currentLayer);
-    street.addTo(map);
-    currentLayer = street;
-  }
+  map.removeLayer(currentLayer);
+  currentLayer = currentLayer === street ? satellite : street;
+  map.addLayer(currentLayer);
 }
 
 async function goToLocation() {
@@ -80,4 +83,4 @@ function renderFields() {
   });
 }
 
-renderFields();
+rend
