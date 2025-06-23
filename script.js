@@ -1,17 +1,23 @@
 let map = L.map('map').setView([37.7749, -122.4194], 10);
 
 const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-const satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-  subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-});
-
 street.addTo(map);
+
 let currentLayer = street;
 
 function toggleView() {
-  map.removeLayer(currentLayer);
-  currentLayer = currentLayer === street ? satellite : street;
-  map.addLayer(currentLayer);
+  if (map.hasLayer(street)) {
+    map.removeLayer(street);
+    const satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+      subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+    });
+    satellite.addTo(map);
+    currentLayer = satellite;
+  } else {
+    map.removeLayer(currentLayer);
+    street.addTo(map);
+    currentLayer = street;
+  }
 }
 
 async function goToLocation() {
@@ -27,13 +33,12 @@ async function goToLocation() {
   }
 }
 
-// Drawing controls
 const drawnItems = new L.FeatureGroup();
 map.addLayer(drawnItems);
 
 const drawControl = new L.Control.Draw({
   edit: {
-    featureGroup: drawnItems,
+    featureGroup: drawnItems
   },
   draw: {
     polygon: true,
@@ -67,7 +72,7 @@ function renderFields() {
   const fieldList = document.getElementById('fieldList');
   fieldList.innerHTML = '';
   const fields = JSON.parse(localStorage.getItem('fields') || '[]');
-  fields.forEach((field, index) => {
+  fields.forEach(field => {
     const div = document.createElement('div');
     div.className = 'field-item';
     div.innerText = field.label;
