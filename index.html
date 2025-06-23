@@ -263,4 +263,59 @@
       farms.push(farm);
       saveFarms();
       renderFarmList();
-      map.setVi
+      map.setView([coords.lat, coords.lon], 13);
+
+      document.getElementById("farmName").value = "";
+      document.getElementById("farmZip").value = "";
+    }
+
+    function deleteFarm(index) {
+      const farm = farms[index];
+      if (confirm(`Are you sure you want to delete "${farm.name}"?`)) {
+        farms.splice(index, 1);
+        saveFarms();
+        renderFarmList();
+      }
+    }
+
+    function centerFarm(index) {
+      const farm = farms[index];
+      map.setView([farm.lat, farm.lon], 13);
+    }
+
+    async function searchAndCenterMap() {
+      const query = document.getElementById("addressInput").value.trim();
+      const coords = await geocodeAddress(query);
+      if (coords) {
+        map.setView([coords.lat, coords.lon], 13);
+      } else {
+        alert("Address not found.");
+      }
+    }
+
+    map.on("draw:created", function (e) {
+      const layer = e.layer;
+      const label = prompt("Enter field label:");
+      if (label) {
+        layer.bindTooltip(label, { permanent: true }).openTooltip();
+        drawnItems.addLayer(layer);
+        const geojson = layer.toGeoJSON();
+        geojson.properties = { label };
+        fields.push(geojson);
+        saveFields();
+      }
+    });
+
+    fields.forEach((geojson) => {
+      const layer = L.geoJSON(geojson).getLayers()[0];
+      const label = geojson.properties?.label;
+      if (label) layer.bindTooltip(label, { permanent: true }).openTooltip();
+      drawnItems.addLayer(layer);
+    });
+
+    window.onload = () => {
+      renderFarmList();
+    };
+  </script>
+</body>
+</html>
