@@ -3,64 +3,79 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Farm Manager</title>
+  <title>Agri Trace</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
   <style>
     html, body {
       height: 100%;
       margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     }
+
     #container {
       display: flex;
       height: 100%;
       overflow: hidden;
     }
+
     #sidebar {
       width: 320px;
-      transition: all 0.3s ease;
-      background: #fff;
+      transition: width 0.3s ease;
+      background: #ffffff;
       border-right: 1px solid #ccc;
       padding: 15px;
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
       overflow-y: auto;
-      position: relative;
       z-index: 1000;
       resize: horizontal;
       min-width: 200px;
       max-width: 500px;
     }
+
     #sidebar.collapsed {
       width: 0 !important;
       padding: 0;
       overflow: hidden;
     }
+
     #toggle-sidebar {
       position: absolute;
       top: 10px;
-      right: -20px;
-      width: 20px;
-      height: 40px;
-      background: #ccc;
-      border: 1px solid #999;
-      border-left: none;
-      border-radius: 0 4px 4px 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      left: 10px;
+      width: 30px;
+      height: 30px;
+      background: #27ae60;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
       cursor: pointer;
-      z-index: 1001;
+      z-index: 1100;
     }
-    #toggle-sidebar span {
-      font-size: 18px;
-      color: #000;
-    }
+
     #map {
       flex-grow: 1;
       height: 100%;
     }
+
+    h2 {
+      color: #27ae60;
+      font-weight: 700;
+      font-size: 1.8rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .slogan {
+      font-size: 0.95rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+      color: #555;
+    }
+
     input, button {
       margin: 5px 0;
       padding: 8px;
@@ -68,18 +83,21 @@
       width: 100%;
       box-sizing: border-box;
     }
+
     .farm-list { margin-top: 10px; }
     .farm-item {
       cursor: pointer;
       padding: 5px;
       border-bottom: 1px solid #eee;
     }
+
     .field-label {
       background: rgba(255,255,255,0.7);
       padding: 2px 4px;
       border-radius: 3px;
       font-size: 0.8rem;
     }
+
     .todo-list { margin-top: 10px; }
     .todo-item {
       display: flex;
@@ -91,8 +109,10 @@
       flex-grow: 1;
       cursor: pointer;
     }
+
     .tab-content { display: none; }
     .tab-content.active { display: block; }
+
     .field-buttons {
       display: flex;
       gap: 10px;
@@ -101,14 +121,18 @@
   </style>
 </head>
 <body>
+  <button id="toggle-sidebar">&#9776;</button>
   <div id="container">
     <div id="sidebar">
-      <div id="toggle-sidebar"><span>&#9664;</span></div>
-      <h2>Farm Manager</h2>
+      <h2>🌱 Agri Trace</h2>
+      <div class="slogan">Smart farming. Simple tools.</div>
+
       <input id="farmName" placeholder="Farm Name" />
       <input id="zipInput" placeholder="ZIP or Address" />
       <button onclick="addFarm()">Add Farm</button>
+
       <div class="farm-list" id="farmList"></div>
+
       <div class="tab-content" id="fieldInfo">
         <h3 id="fieldLabelTitle"></h3>
         <input id="taskInput" placeholder="Add task..." />
@@ -126,7 +150,6 @@
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script>
-    // Satellite and street tiles from Mapbox
     const accessToken = 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NmNmcTA2emYycXBndHRqcmZ3N3gifQ.TD1w2PO7kxDyzgP7N8nIMg';
     const satellite = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=${accessToken}`, {
       attribution: '© Mapbox © OpenStreetMap',
@@ -151,12 +174,10 @@
     };
     L.control.layers(baseLayers).addTo(map);
 
-    const toggleBtn = document.getElementById('toggle-sidebar');
     const sidebar = document.getElementById('sidebar');
-    const arrow = toggleBtn.querySelector('span');
+    const toggleBtn = document.getElementById('toggle-sidebar');
     toggleBtn.onclick = () => {
       sidebar.classList.toggle('collapsed');
-      arrow.innerHTML = sidebar.classList.contains('collapsed') ? '&#9654;' : '&#9664;';
     };
 
     let farms = JSON.parse(localStorage.getItem('farms') || '[]');
