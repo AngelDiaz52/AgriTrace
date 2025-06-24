@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Agri Trace</title>
   <link href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" rel="stylesheet" />
-  <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet" />
   <link href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" rel="stylesheet" />
   <style>
     html, body {
@@ -13,13 +12,11 @@
       height: 100%;
       font-family: "Segoe UI", sans-serif;
     }
-
     #container {
       display: flex;
       height: 100vh;
       overflow: hidden;
     }
-
     #sidebar {
       width: 320px;
       min-width: 200px;
@@ -32,7 +29,6 @@
       resize: horizontal;
       transition: width 0.3s ease;
     }
-
     #toggleSidebar {
       position: absolute;
       top: 10px;
@@ -49,50 +45,36 @@
       justify-content: center;
       transition: left 0.3s ease;
     }
-
     #toggleSidebar span {
       font-size: 16px;
       font-weight: bold;
       color: black;
     }
-
     #map {
       flex-grow: 1;
       transition: margin-left 0.3s ease;
     }
-
     .collapsed #sidebar {
-      width: 0;
+      width: 0 !important;
     }
-
     .collapsed #toggleSidebar {
-      left: 10px;
+      left: 10px !important;
     }
-
     h1 {
       font-size: 1.8rem;
       color: #2c3e50;
       margin: 10px 15px 5px;
     }
-
     .slogan {
       font-size: 0.9rem;
       color: #27ae60;
       font-style: italic;
       margin: 0 15px 15px;
     }
-
     .section {
       padding: 10px 15px;
       border-bottom: 1px solid #eee;
     }
-
-    .field-list {
-      margin-left: 10px;
-      font-size: 0.9rem;
-      color: #444;
-    }
-
     #fieldModal {
       display: none;
       position: fixed;
@@ -104,26 +86,22 @@
       border: 2px solid #27ae60;
       padding: 20px;
       border-radius: 10px;
+      width: 300px;
     }
-
-    #fieldModal input {
+    #fieldModal input, #fieldModal select {
       width: 100%;
       margin-bottom: 10px;
       padding: 5px;
     }
-
-    #fieldModal select, #fieldModal button {
+    #fieldModal button {
       padding: 5px;
       width: 100%;
-      margin-bottom: 10px;
+      margin-top: 10px;
     }
-
-    .farm-item {
-      margin-bottom: 10px;
-    }
-
     .farm-fields {
       margin-left: 10px;
+      font-size: 0.9rem;
+      color: #444;
     }
   </style>
 </head>
@@ -151,45 +129,43 @@
   <h3>Add Field or Orchard Block</h3>
   <input type="text" id="fieldName" placeholder="Name" />
   <input type="text" id="cropType" placeholder="Crops" />
+  <select id="fieldType">
+    <option value="Field">Field</option>
+    <option value="Orchard Block">Orchard Block</option>
+  </select>
   <button onclick="saveFieldDetails()">Save</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script>
-  mapboxgl.accessToken = 'pk.eyJ1IjoiYW5nZWxkaWF6NTIiLCJhIjoiY21jYTNobzR6MDIyaDJ5cHQ1enpiZDN3NSJ9.ANupH-_KNxGYFc4efzpFmg';
+  const mapboxToken = 'pk.eyJ1IjoiYW5nZWxkaWF6NTIiLCJhIjoiY21jYTNobzR6MDIyaDJ5cHQ1enpiZDN3NSJ9.ANupH-_KNxGYFc4efzpFmg';
 
-  const map = L.map('map', {
-    zoom: 13,
-    center: [47.6062, -122.3321],
-    layers: []
-  });
+  const map = L.map('map').setView([47.6062, -122.3321], 13);
 
-  const street = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${mapboxgl.accessToken}`, {
-    attribution: '© Mapbox',
+  const satellite = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`, {
+    tileSize: 512,
+    zoomOffset: -1,
+    attribution: '© Mapbox'
+  }).addTo(map);
+
+  const street = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`, {
     tileSize: 512,
     zoomOffset: -1
   });
 
-  const satellite = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=${mapboxgl.accessToken}`, {
-    tileSize: 512,
-    zoomOffset: -1
-  });
-
-  const baseMaps = {
+  const baseLayers = {
     "Satellite": satellite,
     "Streets": street
   };
 
-  L.control.layers(baseMaps).addTo(map);
-  satellite.addTo(map);
+  L.control.layers(baseLayers).addTo(map);
 
   const drawnItems = L.featureGroup().addTo(map);
-  let drawControl;
   let currentFarm = null;
   let tempLayer = null;
 
-  const farms = JSON.parse(localStorage.getItem("farms")) || {};
+  const farms = JSON.parse(localStorage.getItem("farms") || "{}");
 
   function toggleSidebar() {
     document.body.classList.toggle("collapsed");
@@ -203,10 +179,15 @@
     for (const id in farms) {
       const farm = farms[id];
       const div = document.createElement('div');
-      div.className = 'farm-item';
-      div.innerHTML = `<strong>${farm.name}</strong>
+      div.innerHTML = `
+        <strong>${farm.name}</strong><br/>
         <button onclick="centerFarm('${id}')">View</button>
-        <div class="farm-fields">${farm.fields.map(f => `<div>${f.name} (${f.crop})</div>`).join('')}</div>`;
+        <button onclick="deleteFarm('${id}')">Delete</button>
+        <div class="farm-fields">
+          ${farm.fields.map(f => `<div>${f.name} (${f.crop}) - ${f.type}</div>`).join('')}
+        </div>
+        <hr/>
+      `;
       list.appendChild(div);
     }
   }
@@ -219,17 +200,17 @@
 
   async function addFarm() {
     const name = document.getElementById("farmName").value;
-    const address = document.getElementById("farmZIP").value;
-    if (!name || !address) return alert("Enter farm name and address/ZIP.");
+    const zip = document.getElementById("farmZIP").value;
+    if (!name || !zip) return alert("Enter farm name and address/ZIP.");
 
-    const center = await geocode(address);
-    if (!center) return alert("Address not found.");
+    const coords = await geocode(zip);
+    if (!coords) return alert("Address not found.");
 
     const id = `farm-${Date.now()}`;
-    farms[id] = { name, center, fields: [] };
+    farms[id] = { name, center: coords, fields: [] };
     localStorage.setItem("farms", JSON.stringify(farms));
     updateFarmList();
-    map.setView(center, 16);
+    map.setView(coords, 16);
   }
 
   function centerFarm(id) {
@@ -241,14 +222,26 @@
     });
   }
 
+  function deleteFarm(id) {
+    if (confirm(`Delete farm "${farms[id].name}"? This cannot be undone.`)) {
+      delete farms[id];
+      localStorage.setItem("farms", JSON.stringify(farms));
+      drawnItems.clearLayers();
+      updateFarmList();
+      currentFarm = null;
+    }
+  }
+
   function saveFieldDetails() {
     const name = document.getElementById("fieldName").value;
     const crop = document.getElementById("cropType").value;
-    if (!name || !crop || !tempLayer || !currentFarm) return;
+    const type = document.getElementById("fieldType").value;
+    if (!name || !crop || !type || !tempLayer || !currentFarm) return;
 
     const field = {
       name,
       crop,
+      type,
       geometry: tempLayer.toGeoJSON()
     };
 
@@ -260,12 +253,15 @@
   }
 
   map.on('draw:created', (e) => {
-    if (!currentFarm) return alert("Select a farm first.");
+    if (!currentFarm) {
+      alert("Please select a farm first.");
+      return;
+    }
     tempLayer = e.layer;
     document.getElementById("fieldModal").style.display = "block";
   });
 
-  drawControl = new L.Control.Draw({
+  new L.Control.Draw({
     draw: {
       polygon: true,
       rectangle: true,
@@ -277,8 +273,7 @@
     edit: {
       featureGroup: drawnItems
     }
-  });
-  map.addControl(drawControl);
+  }).addTo(map);
 
   updateFarmList();
 </script>
