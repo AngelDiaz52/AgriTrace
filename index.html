@@ -3,200 +3,320 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Agri Trace – Smart Farming Starts Here</title>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <title>Agri Trace</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; font-family: 'Segoe UI', sans-serif; }
-    #container { display: flex; height: 100%; overflow: hidden; }
-
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #container {
+      display: flex;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+    }
     #sidebar {
       width: 320px;
-      background: #f0fff0;
-      border-right: 2px solid #ccc;
-      padding: 20px;
+      min-width: 200px;
+      max-width: 500px;
+      transition: width 0.3s ease;
+      background: #ffffff;
+      border-right: 1px solid #ccc;
+      padding: 15px;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      resize: horizontal;
-      overflow: auto;
-      transition: width 0.3s ease;
+      overflow-y: auto;
+      z-index: 1000;
     }
-
     #sidebar.collapsed {
       width: 0 !important;
       padding: 0;
       overflow: hidden;
     }
-
-    #sidebar h1 {
-      font-size: 1.8rem;
-      color: #2e7d32;
-      font-weight: bold;
-      margin-bottom: 5px;
+    #resizer {
+      width: 5px;
+      cursor: ew-resize;
+      background: #ccc;
     }
-
-    #sidebar h2 {
-      font-size: 1rem;
-      font-style: italic;
-      color: #388e3c;
-      margin-bottom: 20px;
+    #sidebar.collapsed + #resizer {
+      display: none;
     }
-
-    #toggleBtn {
+    #toggle-sidebar {
       position: absolute;
       top: 10px;
-      left: 320px;
+      left: 10px;
       width: 30px;
       height: 30px;
-      background: #a5d6a7;
+      background: #27ae60;
       border: none;
-      border-radius: 5px;
+      border-radius: 4px;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
       cursor: pointer;
-      z-index: 1001;
-      transition: left 0.3s ease;
+      z-index: 1100;
     }
-
-    #toggleBtn.collapsed {
-      left: 0;
-    }
-
-    #toggleBtn::before {
-      content: '◀';
-      font-size: 16px;
-      color: black;
-    }
-
-    #toggleBtn.collapsed::before {
-      content: '▶';
-    }
-
     #map {
       flex-grow: 1;
+      height: 100%;
     }
-
-    input, button, select {
-      margin-bottom: 10px;
-      padding: 5px;
+    h2 {
+      color: #27ae60;
+      font-weight: 700;
+      font-size: 1.8rem;
+      margin-bottom: 0.2rem;
+    }
+    .slogan {
+      font-size: 0.95rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+      color: #555;
+    }
+    input, button {
+      margin: 5px 0;
+      padding: 8px;
+      font-size: 1rem;
       width: 100%;
+      box-sizing: border-box;
     }
-
-    ul { list-style: none; padding: 0; }
-    li { margin: 3px 0; background: #e8f5e9; padding: 5px; border-radius: 4px; }
+    .farm-list { margin-top: 10px; }
+    .farm-item {
+      cursor: pointer;
+      padding: 5px;
+      border-bottom: 1px solid #eee;
+    }
+    .field-label {
+      background: rgba(255,255,255,0.7);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 0.8rem;
+    }
+    .todo-list { margin-top: 10px; }
+    .todo-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 0;
+    }
+    .todo-item span {
+      flex-grow: 1;
+      cursor: pointer;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .field-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
+  <button id="toggle-sidebar">&#9776;</button>
   <div id="container">
     <div id="sidebar">
-      <h1>Agri Trace</h1>
-      <h2>Smart Farming Starts Here</h2>
-      <input id="zipInput" type="text" placeholder="Enter ZIP or address" />
-      <button onclick="centerMap()">Center Map</button>
-      <input id="farmName" type="text" placeholder="Farm Name" />
+      <h2>🌱 Agri Trace</h2>
+      <div class="slogan">Smart farming. Simple tools.</div>
+      <input id="farmName" placeholder="Farm Name" />
+      <input id="zipInput" placeholder="ZIP or Address" />
       <button onclick="addFarm()">Add Farm</button>
-      <h3>Farms:</h3>
-      <ul id="farmList"></ul>
+      <div class="farm-list" id="farmList"></div>
+      <div class="tab-content" id="fieldInfo">
+        <h3 id="fieldLabelTitle"></h3>
+        <input id="taskInput" placeholder="Add task..." />
+        <button onclick="addTask()">Add Task</button>
+        <div id="todoList" class="todo-list"></div>
+        <div class="field-buttons">
+          <button onclick="toggleFieldInfo()">Hide</button>
+          <button onclick="deleteField()">Delete Field</button>
+        </div>
+      </div>
     </div>
-    <button id="toggleBtn"></button>
+    <div id="resizer"></div>
     <div id="map"></div>
   </div>
 
-  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script>
-    // Mapbox access
-    mapboxgl.accessToken = 'pk.eyJ1IjoiYW5nZWxkaWF6NTIiLCJhIjoiY21jYTJ3bjF5MXBmYzJrcHcwM2Y5ZW14YSJ9.hfBzEthhzvozXmNeDApGtg';
+    const accessToken = 'your_mapbox_token_here'; // <--- REPLACE THIS WITH YOUR MAPBOX TOKEN
 
-    // Map setup
-    const map = L.map('map').setView([47.608013, -122.335167], 10);
-    let currentStyle = 'satellite-streets-v12';
-
-    const tileLayer = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/${currentStyle}/tiles/{z}/{x}/{y}?access_token=${mapboxgl.accessToken}`, {
+    const satellite = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/256/{z}/{x}/{y}@2x?access_token=${accessToken}`, {
+      attribution: '© Mapbox © OpenStreetMap',
       tileSize: 512,
-      zoomOffset: -1,
-      attribution: '© Mapbox © OpenStreetMap'
-    }).addTo(map);
-
-    // Toggle button logic
-    const toggleBtn = document.getElementById("toggleBtn");
-    const sidebar = document.getElementById("sidebar");
-
-    toggleBtn.onclick = () => {
-      sidebar.classList.toggle("collapsed");
-      toggleBtn.classList.toggle("collapsed");
-    };
-
-    // Map style toggle
-    map.on('click', () => {
-      currentStyle = currentStyle.includes("satellite") ? "streets-v12" : "satellite-streets-v12";
-      tileLayer.setUrl(`https://api.mapbox.com/styles/v1/mapbox/${currentStyle}/tiles/{z}/{x}/{y}?access_token=${mapboxgl.accessToken}`);
+      zoomOffset: -1
     });
 
-    // Farm logic
-    const farmList = document.getElementById("farmList");
-    const farms = JSON.parse(localStorage.getItem("farms")) || [];
+    const streets = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/256/{z}/{x}/{y}@2x?access_token=${accessToken}`, {
+      attribution: '© Mapbox © OpenStreetMap',
+      tileSize: 512,
+      zoomOffset: -1
+    });
 
-    function renderFarms() {
-      farmList.innerHTML = '';
-      farms.forEach((farm, index) => {
-        const li = document.createElement("li");
-        li.textContent = farm.name;
-        li.style.cursor = "pointer";
-        li.onclick = () => map.setView(farm.coords, 14);
-        farmList.appendChild(li);
-      });
-    }
+    const map = L.map('map', {
+      center: [47.6062, -122.3321],
+      zoom: 10,
+      layers: [satellite]
+    });
+
+    L.control.layers({ "Satellite": satellite, "Streets": streets }).addTo(map);
+
+    const sidebar = document.getElementById('sidebar');
+    const resizer = document.getElementById('resizer');
+    const toggleBtn = document.getElementById('toggle-sidebar');
+
+    toggleBtn.onclick = () => sidebar.classList.toggle('collapsed');
+
+    resizer.addEventListener('mousedown', function (e) {
+      document.body.style.cursor = 'ew-resize';
+      const startX = e.clientX;
+      const startWidth = sidebar.offsetWidth;
+      function doDrag(e) {
+        const newWidth = startWidth + (e.clientX - startX);
+        if (newWidth >= 200 && newWidth <= 500) {
+          sidebar.style.width = newWidth + 'px';
+        }
+      }
+      function stopDrag() {
+        document.body.style.cursor = '';
+        document.removeEventListener('mousemove', doDrag);
+        document.removeEventListener('mouseup', stopDrag);
+      }
+      document.addEventListener('mousemove', doDrag);
+      document.addEventListener('mouseup', stopDrag);
+    });
+
+    let farms = JSON.parse(localStorage.getItem('farms') || '[]');
+    const saveFarms = () => localStorage.setItem('farms', JSON.stringify(farms));
 
     function addFarm() {
       const name = document.getElementById("farmName").value.trim();
-      if (!name) return;
-
-      const center = map.getCenter();
-      const farm = { name, coords: [center.lat, center.lng] };
-      farms.push(farm);
-      localStorage.setItem("farms", JSON.stringify(farms));
-      renderFarms();
-      document.getElementById("farmName").value = '';
+      const zip = document.getElementById("zipInput").value.trim();
+      if (!name || !zip) return;
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(zip)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data[0]) {
+            const { lat, lon } = data[0];
+            const farm = { name, zip, lat, lon };
+            farms.push(farm);
+            saveFarms();
+            renderFarmList();
+            map.setView([lat, lon], 14);
+          }
+        });
+      document.getElementById("farmName").value = "";
+      document.getElementById("zipInput").value = "";
     }
 
-    renderFarms();
-
-    // Geocoding function
-    async function centerMap() {
-      const query = document.getElementById("zipInput").value.trim();
-      if (!query) return;
-
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.length) {
-          const { lat, lon } = data[0];
-          map.setView([parseFloat(lat), parseFloat(lon)], 13);
-        } else {
-          alert("Location not found.");
-        }
-      } catch (err) {
-        alert("Geocoding failed.");
-      }
+    function renderFarmList() {
+      const list = document.getElementById("farmList");
+      list.innerHTML = '';
+      farms.forEach(farm => {
+        const item = document.createElement("div");
+        item.className = "farm-item";
+        item.textContent = `${farm.name} (${farm.zip})`;
+        item.onclick = () => map.setView([farm.lat, farm.lon], 14);
+        list.appendChild(item);
+      });
     }
 
-    // Leaflet draw setup
     const drawnItems = new L.FeatureGroup().addTo(map);
     const drawControl = new L.Control.Draw({
       edit: { featureGroup: drawnItems },
-      draw: { polygon: true, rectangle: true, marker: false, circle: false, polyline: false, circlemarker: false }
+      draw: { polygon: true, rectangle: true, circle: false, marker: false, polyline: false }
     });
     map.addControl(drawControl);
 
-    map.on('draw:created', (e) => {
-      const layer = e.layer;
-      const label = prompt("Enter Field Name:");
-      if (label) layer.bindTooltip(label, { permanent: true, direction: 'center' });
-      drawnItems.addLayer(layer);
+    let selectedField = null;
+
+    map.on(L.Draw.Event.CREATED, function (event) {
+      const layer = event.layer;
+      const label = prompt("Enter field label:");
+      if (label) {
+        layer.bindTooltip(label, { permanent: true, direction: "center", className: "field-label" });
+        layer.fieldLabel = label;
+        layer.tasks = [];
+        drawnItems.addLayer(layer);
+      }
     });
+
+    map.on("click", () => {
+      document.querySelectorAll(".tab-content").forEach(tab => tab.classList.remove("active"));
+      selectedField = null;
+    });
+
+    drawnItems.on("click", function (e) {
+      selectedField = e.layer;
+      showFieldInfo();
+    });
+
+    function showFieldInfo() {
+      if (!selectedField) return;
+      document.querySelectorAll(".tab-content").forEach(tab => tab.classList.remove("active"));
+      document.getElementById("fieldLabelTitle").textContent = selectedField.fieldLabel;
+      document.getElementById("todoList").innerHTML = "";
+      selectedField.tasks.forEach((task, i) => {
+        const item = document.createElement("div");
+        item.className = "todo-item";
+        item.innerHTML = `
+          <input type="checkbox" ${task.done ? "checked" : ""} onchange="toggleTask(${i})">
+          <span onclick="editTask(${i})">${task.text}</span>
+          <button onclick="removeTask(${i})">✕</button>`;
+        document.getElementById("todoList").appendChild(item);
+      });
+      document.getElementById("fieldInfo").classList.add("active");
+    }
+
+    function addTask() {
+      if (!selectedField) return;
+      const text = document.getElementById("taskInput").value.trim();
+      if (!text) return;
+      selectedField.tasks.push({ text, done: false });
+      document.getElementById("taskInput").value = "";
+      showFieldInfo();
+    }
+
+    function toggleTask(index) {
+      if (selectedField) selectedField.tasks[index].done = !selectedField.tasks[index].done;
+    }
+
+    function removeTask(index) {
+      if (selectedField) {
+        selectedField.tasks.splice(index, 1);
+        showFieldInfo();
+      }
+    }
+
+    function editTask(index) {
+      if (!selectedField) return;
+      const current = selectedField.tasks[index].text;
+      const updated = prompt("Edit task:", current);
+      if (updated !== null) {
+        selectedField.tasks[index].text = updated.trim();
+        showFieldInfo();
+      }
+    }
+
+    function deleteField() {
+      if (selectedField && confirm("Delete this field?")) {
+        drawnItems.removeLayer(selectedField);
+        selectedField = null;
+        document.getElementById("fieldInfo").classList.remove("active");
+      }
+    }
+
+    function toggleFieldInfo() {
+      document.getElementById("fieldInfo").classList.remove("active");
+      selectedField = null;
+    }
+
+    renderFarmList();
   </script>
 </body>
 </html>
