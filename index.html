@@ -1,149 +1,256 @@
-<style>
-    html, body {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Farm Manager</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    body, html {
       margin: 0;
       height: 100%;
-      font-family: "Segoe UI", sans-serif;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     }
+
     #container {
       display: flex;
       height: 100vh;
       overflow: hidden;
-      position: relative;
     }
+
     #sidebar {
       width: 320px;
-      min-width: 250px;
-      max-width: 600px;
-      overflow-y: auto;
+      transition: all 0.3s ease;
       background: #fff;
-      border-right: 1px solid #ddd;
-      padding: 20px;
+      border-right: 1px solid #ccc;
+      padding: 15px;
       box-sizing: border-box;
-      transition: left 0.3s ease;
-      z-index: 999;
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 0;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      position: relative;
+      z-index: 1000;
     }
+
     #sidebar.collapsed {
-      left: -320px;
+      width: 0;
+      padding: 0;
+      overflow: hidden;
     }
-    #toggleSidebar {
+
+    #toggle-sidebar {
       position: absolute;
       top: 10px;
-      left: 320px;
+      right: -20px;
       width: 20px;
       height: 40px;
-      background: #e0e0e0;
-      color: black;
-      border: none;
-      border-top-right-radius: 4px;
-      border-bottom-right-radius: 4px;
-      cursor: pointer;
+      background: #ccc;
+      border: 1px solid #999;
+      border-left: none;
+      border-radius: 0 4px 4px 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: bold;
-      z-index: 1000;
-      transition: left 0.3s ease;
-    }
-    #sidebar.collapsed + #toggleSidebar {
-      left: 0;
-    }
-    #sidebar h1 {
-      color: #27ae60;
-      border-bottom: 2px solid #27ae60;
-      margin-bottom: 1rem;
-      font-size: 1.8rem;
-    }
-    .section {
-      margin-bottom: 1.5rem;
-    }
-    label {
-      display: block;
-      margin-top: 10px;
-      font-weight: bold;
-    }
-    input[type="text"] {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    button {
-      margin-top: 10px;
-      width: 100%;
-      padding: 10px;
-      background-color: #27ae60;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-weight: bold;
       cursor: pointer;
+      z-index: 1001;
     }
+
+    #toggle-sidebar span {
+      font-size: 18px;
+      color: #000;
+    }
+
     #map {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 1;
+      flex-grow: 1;
     }
-    #mapSearchBar {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-      display: flex;
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-      gap: 8px;
-    }
-    #mapSearchBar input {
+
+    input, button, select {
+      margin: 5px 0;
       padding: 8px;
-      width: 250px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      font-size: 1rem;
+      width: 100%;
+      box-sizing: border-box;
     }
-    #mapSearchBar button {
-      padding: 8px 12px;
-      background-color: #27ae60;
-      color: white;
-      border: none;
-      border-radius: 4px;
+
+    .farm-list {
+      margin-top: 10px;
+    }
+
+    .farm-item {
       cursor: pointer;
-      font-weight: bold;
+      padding: 5px;
+      border-bottom: 1px solid #eee;
     }
-    .tab-buttons {
+
+    .field-label {
+      background: rgba(255,255,255,0.7);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 0.8rem;
+    }
+
+    .todo-list {
+      margin-top: 10px;
+    }
+
+    .todo-item {
       display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 0;
     }
-    .tab-buttons button {
-      flex: 1;
-      padding: 10px;
-      font-weight: bold;
+
+    .todo-item input[type="checkbox"] {
+      margin-right: 10px;
     }
-    .tab {
+
+    .tab-content {
       display: none;
     }
-    .tab.active {
+
+    .tab-content.active {
       display: block;
     }
   </style>
+</head>
+<body>
+  <div id="container">
+    <div id="sidebar">
+      <div id="toggle-sidebar"><span>&#9664;</span></div>
+      <h2>Farm Manager</h2>
+      <input id="farmName" placeholder="Farm Name" />
+      <input id="zipInput" placeholder="ZIP or Address" />
+      <button onclick="addFarm()">Add Farm</button>
+
+      <div class="farm-list" id="farmList"></div>
+
+      <div class="tab-content" id="fieldInfo">
+        <h3 id="fieldLabelTitle"></h3>
+        <input id="taskInput" placeholder="Add task..." />
+        <button onclick="addTask()">Add Task</button>
+        <div id="todoList" class="todo-list"></div>
+      </div>
+    </div>
+    <div id="map"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+
   <script>
-    const sidebar = document.getElementById("sidebar");
-    const toggleBtn = document.getElementById("toggleSidebar");
-    if (sidebar && toggleBtn) {
-      toggleBtn.onclick = () => {
-        sidebar.classList.toggle("collapsed");
-        toggleBtn.textContent = sidebar.classList.contains("collapsed") ? "▶" : "◀";
-      };
+    let map = L.map('map').setView([47.6062, -122.3321], 10); // Seattle default
+
+    let satellite = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    let farms = JSON.parse(localStorage.getItem('farms') || '[]');
+    let drawnItems = new L.FeatureGroup().addTo(map);
+    let selectedField = null;
+
+    const toggleBtn = document.getElementById('toggle-sidebar');
+    const sidebar = document.getElementById('sidebar');
+    const arrow = toggleBtn.querySelector('span');
+    toggleBtn.onclick = () => {
+      sidebar.classList.toggle('collapsed');
+      arrow.innerHTML = sidebar.classList.contains('collapsed') ? '&#9654;' : '&#9664;';
+    };
+
+    const saveFarms = () => localStorage.setItem('farms', JSON.stringify(farms));
+
+    function addFarm() {
+      const name = document.getElementById("farmName").value.trim();
+      const zip = document.getElementById("zipInput").value.trim();
+      if (!name || !zip) return;
+
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(zip)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data[0]) {
+            const { lat, lon } = data[0];
+            const farm = { name, zip, lat, lon };
+            farms.push(farm);
+            saveFarms();
+            renderFarmList();
+            map.setView([lat, lon], 14);
+          }
+        });
+
+      document.getElementById("farmName").value = "";
+      document.getElementById("zipInput").value = "";
     }
+
+    function renderFarmList() {
+      const list = document.getElementById("farmList");
+      list.innerHTML = '';
+      farms.forEach((farm, index) => {
+        const item = document.createElement("div");
+        item.className = "farm-item";
+        item.textContent = farm.name + " (" + farm.zip + ")";
+        item.onclick = () => map.setView([farm.lat, farm.lon], 14);
+        list.appendChild(item);
+      });
+    }
+
+    const drawControl = new L.Control.Draw({
+      edit: { featureGroup: drawnItems },
+      draw: {
+        polygon: true,
+        rectangle: true,
+        circle: false,
+        marker: false,
+        polyline: false
+      }
+    });
+    map.addControl(drawControl);
+
+    map.on(L.Draw.Event.CREATED, function (event) {
+      const layer = event.layer;
+      const label = prompt("Enter field label:");
+      if (label) {
+        layer.bindTooltip(label, { permanent: true, direction: "center", className: "field-label" });
+        layer.fieldLabel = label;
+        layer.tasks = [];
+        drawnItems.addLayer(layer);
+      }
+    });
+
+    map.on("click", function (e) {
+      document.querySelectorAll(".tab-content").forEach(tab => tab.classList.remove("active"));
+    });
+
+    drawnItems.on("click", function (e) {
+      selectedField = e.layer;
+      document.querySelectorAll(".tab-content").forEach(tab => tab.classList.remove("active"));
+      document.getElementById("fieldLabelTitle").textContent = selectedField.fieldLabel;
+      document.getElementById("todoList").innerHTML = "";
+      selectedField.tasks.forEach((task, i) => {
+        const item = document.createElement("div");
+        item.className = "todo-item";
+        item.innerHTML = `<input type="checkbox" ${task.done ? "checked" : ""} onchange="toggleTask(${i})">
+                          <span>${task.text}</span>`;
+        document.getElementById("todoList").appendChild(item);
+      });
+      document.getElementById("fieldInfo").classList.add("active");
+    });
+
+    function addTask() {
+      if (!selectedField) return;
+      const text = document.getElementById("taskInput").value.trim();
+      if (!text) return;
+      selectedField.tasks.push({ text, done: false });
+      document.getElementById("taskInput").value = "";
+      selectedField.fire("click");
+    }
+
+    function toggleTask(index) {
+      if (selectedField) {
+        selectedField.tasks[index].done = !selectedField.tasks[index].done;
+      }
+    }
+
+    renderFarmList();
   </script>
+</body>
+</html>
