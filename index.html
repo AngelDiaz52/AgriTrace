@@ -122,10 +122,6 @@
       gap: 10px;
       margin-top: 10px;
     }
-
-    .hidden {
-      display: none !important;
-    }
   </style>
 </head>
 <body>
@@ -156,16 +152,12 @@
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script>
-    const satellite = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NmNmcTA2emYycXBndHRqcmZ3N3gifQ.TD1w2PO7kxDyzgP7N8nIMg', {
-      attribution: '© Mapbox © OpenStreetMap',
-      tileSize: 512,
-      zoomOffset: -1
+    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri'
     });
 
-    const streets = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NmNmcTA2emYycXBndHRqcmZ3N3gifQ.TD1w2PO7kxDyzgP7N8nIMg', {
-      attribution: '© Mapbox © OpenStreetMap',
-      tileSize: 512,
-      zoomOffset: -1
+    const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
     });
 
     let map = L.map('map', {
@@ -174,7 +166,10 @@
       layers: [satellite]
     });
 
-    const baseLayers = { "Satellite": satellite, "Streets": streets };
+    const baseLayers = {
+      "Satellite (Esri)": satellite,
+      "Streets (OSM)": streets
+    };
     L.control.layers(baseLayers).addTo(map);
 
     const toggleBtn = document.getElementById('toggle-sidebar');
