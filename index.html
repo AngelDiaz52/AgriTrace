@@ -3,244 +3,284 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Agri Trace – Smart Farming Starts Here</title>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+  <title>Agri Trace</title>
+  <link href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" rel="stylesheet" />
+  <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet" />
+  <link href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" rel="stylesheet" />
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; font-family: 'Segoe UI', sans-serif; }
-    #container { display: flex; height: 100%; overflow: hidden; }
-
-    #sidebar {
-      width: 320px;
-      background: #f0fff0;
-      border-right: 2px solid #ccc;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      resize: horizontal;
-      overflow: auto;
-      transition: width 0.3s ease;
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: "Segoe UI", sans-serif;
     }
 
-    #sidebar.collapsed {
-      width: 0 !important;
-      padding: 0;
+    #container {
+      display: flex;
+      height: 100vh;
       overflow: hidden;
     }
 
-    #sidebar h1 {
-      font-size: 1.8rem;
-      color: #2e7d32;
-      font-weight: bold;
-      margin-bottom: 5px;
+    #sidebar {
+      width: 320px;
+      min-width: 200px;
+      max-width: 500px;
+      background: #ffffff;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      resize: horizontal;
+      transition: width 0.3s ease;
     }
 
-    #sidebar h2 {
-      font-size: 1rem;
-      font-style: italic;
-      color: #388e3c;
-      margin-bottom: 20px;
-    }
-
-    #sidebar .input-group {
-      margin-bottom: 12px;
-    }
-
-    input, button {
-      width: 100%;
-      padding: 6px;
-      margin-top: 4px;
-      font-size: 0.95rem;
-    }
-
-    ul { list-style: none; padding: 0; }
-    li {
-      background: #e8f5e9;
-      padding: 6px 10px;
-      margin-bottom: 6px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    #toggleBtn {
+    #toggleSidebar {
       position: absolute;
       top: 10px;
       left: 320px;
       width: 30px;
       height: 30px;
-      background: #a5d6a7;
-      border: none;
+      background-color: #ccc;
       border-radius: 5px;
+      border: none;
       cursor: pointer;
       z-index: 1001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       transition: left 0.3s ease;
     }
 
-    #toggleBtn.collapsed {
-      left: 0;
-    }
-
-    #toggleBtn::before {
-      content: '◀';
+    #toggleSidebar span {
       font-size: 16px;
+      font-weight: bold;
       color: black;
-    }
-
-    #toggleBtn.collapsed::before {
-      content: '▶';
     }
 
     #map {
       flex-grow: 1;
+      transition: margin-left 0.3s ease;
+    }
+
+    .collapsed #sidebar {
+      width: 0;
+    }
+
+    .collapsed #toggleSidebar {
+      left: 10px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      color: #2c3e50;
+      margin: 10px 15px 5px;
+    }
+
+    .slogan {
+      font-size: 0.9rem;
+      color: #27ae60;
+      font-style: italic;
+      margin: 0 15px 15px;
+    }
+
+    .section {
+      padding: 10px 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .field-list {
+      margin-left: 10px;
+      font-size: 0.9rem;
+      color: #444;
+    }
+
+    #fieldModal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 2px solid #27ae60;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    #fieldModal input {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 5px;
+    }
+
+    #fieldModal select, #fieldModal button {
+      padding: 5px;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .farm-item {
+      margin-bottom: 10px;
+    }
+
+    .farm-fields {
+      margin-left: 10px;
     }
   </style>
 </head>
 <body>
-  <div id="container">
-    <div id="sidebar">
-      <h1>Agri Trace</h1>
-      <h2>Smart Farming Starts Here</h2>
-
-      <div class="input-group">
-        <label for="zipInput">Center by ZIP:</label>
-        <input id="zipInput" type="text" placeholder="Enter ZIP code" />
-        <button onclick="centerMap()">Center Map</button>
-      </div>
-
-      <div class="input-group">
-        <label for="addressInput">Center by Address:</label>
-        <input id="addressInput" type="text" placeholder="Enter full address" />
-        <button onclick="centerMapByAddress()">Go to Address</button>
-      </div>
-
-      <div class="input-group">
-        <label for="farmName">Add Farm:</label>
-        <input id="farmName" type="text" placeholder="Farm Name" />
-        <button onclick="addFarm()">Add Farm</button>
-      </div>
-
-      <h3>Farms:</h3>
-      <ul id="farmList"></ul>
+<div id="container">
+  <div id="sidebar">
+    <h1>Agri Trace</h1>
+    <p class="slogan">Precision meets productivity.</p>
+    <div class="section">
+      <input id="farmName" placeholder="Farm name" />
+      <input id="farmZIP" placeholder="ZIP or Address" />
+      <button onclick="addFarm()">Add Farm</button>
     </div>
-
-    <button id="toggleBtn"></button>
-    <div id="map"></div>
+    <div class="section" id="farmList"></div>
   </div>
 
-  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script>
-    const mapboxToken = 'pk.eyJ1IjoiYW5nZWxkaWF6NTIiLCJhIjoiY21jYTJ3bjF5MXBmYzJrcHcwM2Y5ZW14YSJ9.hfBzEthhzvozXmNeDApGtg';
+  <button id="toggleSidebar" onclick="toggleSidebar()">
+    <span>&larr;</span>
+  </button>
 
-    const map = L.map('map').setView([47.608013, -122.335167], 10);
-    let currentStyle = 'satellite-streets-v12';
+  <div id="map"></div>
+</div>
 
-    const tileLayer = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/${currentStyle}/tiles/512/{z}/{x}/{y}@2x?access_token=${mapboxToken}`, {
-      tileSize: 512,
-      zoomOffset: -1,
-      attribution: '© Mapbox © OpenStreetMap'
-    }).addTo(map);
+<div id="fieldModal">
+  <h3>Add Field or Orchard Block</h3>
+  <input type="text" id="fieldName" placeholder="Name" />
+  <input type="text" id="cropType" placeholder="Crops" />
+  <button onclick="saveFieldDetails()">Save</button>
+</div>
 
-    const toggleBtn = document.getElementById("toggleBtn");
-    const sidebar = document.getElementById("sidebar");
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script>
+  mapboxgl.accessToken = 'pk.eyJ1IjoiYW5nZWxkaWF6NTIiLCJhIjoiY21jYTNobzR6MDIyaDJ5cHQ1enpiZDN3NSJ9.ANupH-_KNxGYFc4efzpFmg';
 
-    toggleBtn.onclick = () => {
-      sidebar.classList.toggle("collapsed");
-      toggleBtn.classList.toggle("collapsed");
+  const map = L.map('map', {
+    zoom: 13,
+    center: [47.6062, -122.3321],
+    layers: []
+  });
+
+  const street = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${mapboxgl.accessToken}`, {
+    attribution: '© Mapbox',
+    tileSize: 512,
+    zoomOffset: -1
+  });
+
+  const satellite = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=${mapboxgl.accessToken}`, {
+    tileSize: 512,
+    zoomOffset: -1
+  });
+
+  const baseMaps = {
+    "Satellite": satellite,
+    "Streets": street
+  };
+
+  L.control.layers(baseMaps).addTo(map);
+  satellite.addTo(map);
+
+  const drawnItems = L.featureGroup().addTo(map);
+  let drawControl;
+  let currentFarm = null;
+  let tempLayer = null;
+
+  const farms = JSON.parse(localStorage.getItem("farms")) || {};
+
+  function toggleSidebar() {
+    document.body.classList.toggle("collapsed");
+    document.querySelector("#toggleSidebar span").innerHTML =
+      document.body.classList.contains("collapsed") ? "&rarr;" : "&larr;";
+  }
+
+  function updateFarmList() {
+    const list = document.getElementById("farmList");
+    list.innerHTML = '';
+    for (const id in farms) {
+      const farm = farms[id];
+      const div = document.createElement('div');
+      div.className = 'farm-item';
+      div.innerHTML = `<strong>${farm.name}</strong>
+        <button onclick="centerFarm('${id}')">View</button>
+        <div class="farm-fields">${farm.fields.map(f => `<div>${f.name} (${f.crop})</div>`).join('')}</div>`;
+      list.appendChild(div);
+    }
+  }
+
+  async function geocode(address) {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${address}`);
+    const data = await res.json();
+    return data.length ? [parseFloat(data[0].lat), parseFloat(data[0].lon)] : null;
+  }
+
+  async function addFarm() {
+    const name = document.getElementById("farmName").value;
+    const address = document.getElementById("farmZIP").value;
+    if (!name || !address) return alert("Enter farm name and address/ZIP.");
+
+    const center = await geocode(address);
+    if (!center) return alert("Address not found.");
+
+    const id = `farm-${Date.now()}`;
+    farms[id] = { name, center, fields: [] };
+    localStorage.setItem("farms", JSON.stringify(farms));
+    updateFarmList();
+    map.setView(center, 16);
+  }
+
+  function centerFarm(id) {
+    currentFarm = id;
+    map.setView(farms[id].center, 16);
+    drawnItems.clearLayers();
+    farms[id].fields.forEach(f => {
+      const layer = L.geoJSON(f.geometry).addTo(drawnItems);
+    });
+  }
+
+  function saveFieldDetails() {
+    const name = document.getElementById("fieldName").value;
+    const crop = document.getElementById("cropType").value;
+    if (!name || !crop || !tempLayer || !currentFarm) return;
+
+    const field = {
+      name,
+      crop,
+      geometry: tempLayer.toGeoJSON()
     };
 
-    map.on('click', () => {
-      currentStyle = currentStyle.includes("satellite") ? "streets-v12" : "satellite-streets-v12";
-      tileLayer.setUrl(`https://api.mapbox.com/styles/v1/mapbox/${currentStyle}/tiles/512/{z}/{x}/{y}@2x?access_token=${mapboxToken}`);
-    });
+    farms[currentFarm].fields.push(field);
+    localStorage.setItem("farms", JSON.stringify(farms));
+    document.getElementById("fieldModal").style.display = "none";
+    tempLayer.addTo(drawnItems);
+    updateFarmList();
+  }
 
-    const farmList = document.getElementById("farmList");
-    const farms = JSON.parse(localStorage.getItem("farms")) || [];
+  map.on('draw:created', (e) => {
+    if (!currentFarm) return alert("Select a farm first.");
+    tempLayer = e.layer;
+    document.getElementById("fieldModal").style.display = "block";
+  });
 
-    function renderFarms() {
-      farmList.innerHTML = '';
-      farms.forEach((farm, index) => {
-        const li = document.createElement("li");
-        li.textContent = farm.name;
-        li.onclick = () => map.setView(farm.coords, 14);
-        farmList.appendChild(li);
-      });
+  drawControl = new L.Control.Draw({
+    draw: {
+      polygon: true,
+      rectangle: true,
+      polyline: false,
+      marker: false,
+      circle: false,
+      circlemarker: false
+    },
+    edit: {
+      featureGroup: drawnItems
     }
+  });
+  map.addControl(drawControl);
 
-    function addFarm() {
-      const name = document.getElementById("farmName").value.trim();
-      if (!name) return;
-      const center = map.getCenter();
-      const farm = { name, coords: [center.lat, center.lng] };
-      farms.push(farm);
-      localStorage.setItem("farms", JSON.stringify(farms));
-      renderFarms();
-      document.getElementById("farmName").value = '';
-    }
-
-    renderFarms();
-
-    async function centerMap() {
-      const query = document.getElementById("zipInput").value.trim();
-      if (!query) return;
-
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.length) {
-          const { lat, lon } = data[0];
-          map.setView([parseFloat(lat), parseFloat(lon)], 13);
-        } else {
-          alert("Location not found.");
-        }
-      } catch (err) {
-        alert("Geocoding failed.");
-      }
-    }
-
-    async function centerMapByAddress() {
-      const address = document.getElementById("addressInput").value.trim();
-      if (!address) return;
-
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.length) {
-          const { lat, lon } = data[0];
-          map.setView([parseFloat(lat), parseFloat(lon)], 13);
-        } else {
-          alert("Address not found.");
-        }
-      } catch (err) {
-        alert("Address search failed.");
-      }
-    }
-
-    const drawnItems = new L.FeatureGroup().addTo(map);
-    const drawControl = new L.Control.Draw({
-      edit: { featureGroup: drawnItems },
-      draw: {
-        polygon: true,
-        rectangle: true,
-        marker: false,
-        circle: false,
-        polyline: false,
-        circlemarker: false
-      }
-    });
-    map.addControl(drawControl);
-
-    map.on('draw:created', (e) => {
-      const layer = e.layer;
-      const label = prompt("Enter Field Name:");
-      if (label) layer.bindTooltip(label, { permanent: true, direction: 'center' });
-      drawnItems.addLayer(layer);
-    });
-  </script>
+  updateFarmList();
+</script>
 </body>
 </html>
