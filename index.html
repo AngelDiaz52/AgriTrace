@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Farm Manager</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
   <style>
     body, html {
       margin: 0;
@@ -30,10 +31,13 @@
       overflow-y: auto;
       position: relative;
       z-index: 1000;
+      resize: horizontal;
+      min-width: 200px;
+      max-width: 500px;
     }
 
     #sidebar.collapsed {
-      width: 0;
+      width: 0 !important;
       padding: 0;
       overflow: hidden;
     }
@@ -64,7 +68,7 @@
       flex-grow: 1;
     }
 
-    input, button, select {
+    input, button {
       margin: 5px 0;
       padding: 8px;
       font-size: 1rem;
@@ -100,8 +104,9 @@
       padding: 5px 0;
     }
 
-    .todo-item input[type="checkbox"] {
-      margin-right: 10px;
+    .todo-item span {
+      flex-grow: 1;
+      cursor: pointer;
     }
 
     .tab-content {
@@ -110,6 +115,16 @@
 
     .tab-content.active {
       display: block;
+    }
+
+    .field-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .hidden {
+      display: none !important;
     }
   </style>
 </head>
@@ -129,6 +144,10 @@
         <input id="taskInput" placeholder="Add task..." />
         <button onclick="addTask()">Add Task</button>
         <div id="todoList" class="todo-list"></div>
+        <div class="field-buttons">
+          <button onclick="toggleFieldInfo()">Hide</button>
+          <button onclick="deleteField()">Delete Field</button>
+        </div>
       </div>
     </div>
     <div id="map"></div>
@@ -136,18 +155,27 @@
 
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-
   <script>
-    let map = L.map('map').setView([47.6062, -122.3321], 10); // Seattle default
+    const satellite = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NmNmcTA2emYycXBndHRqcmZ3N3gifQ.TD1w2PO7kxDyzgP7N8nIMg', {
+      attribution: '© Mapbox © OpenStreetMap',
+      tileSize: 512,
+      zoomOffset: -1
+    });
 
-    let satellite = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    const streets = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NmNmcTA2emYycXBndHRqcmZ3N3gifQ.TD1w2PO7kxDyzgP7N8nIMg', {
+      attribution: '© Mapbox © OpenStreetMap',
+      tileSize: 512,
+      zoomOffset: -1
+    });
 
-    let farms = JSON.parse(localStorage.getItem('farms') || '[]');
-    let drawnItems = new L.FeatureGroup().addTo(map);
-    let selectedField = null;
+    let map = L.map('map', {
+      center: [47.6062, -122.3321],
+      zoom: 10,
+      layers: [satellite]
+    });
+
+    const baseLayers = { "Satellite": satellite, "Streets": streets };
+    L.control.layers(baseLayers).addTo(map);
 
     const toggleBtn = document.getElementById('toggle-sidebar');
     const sidebar = document.getElementById('sidebar');
@@ -157,6 +185,7 @@
       arrow.innerHTML = sidebar.classList.contains('collapsed') ? '&#9654;' : '&#9664;';
     };
 
+    let farms = JSON.parse(localStorage.getItem('farms') || '[]');
     const saveFarms = () => localStorage.setItem('farms', JSON.stringify(farms));
 
     function addFarm() {
@@ -184,26 +213,23 @@
     function renderFarmList() {
       const list = document.getElementById("farmList");
       list.innerHTML = '';
-      farms.forEach((farm, index) => {
+      farms.forEach((farm) => {
         const item = document.createElement("div");
         item.className = "farm-item";
-        item.textContent = farm.name + " (" + farm.zip + ")";
+        item.textContent = `${farm.name} (${farm.zip})`;
         item.onclick = () => map.setView([farm.lat, farm.lon], 14);
         list.appendChild(item);
       });
     }
 
+    const drawnItems = new L.FeatureGroup().addTo(map);
     const drawControl = new L.Control.Draw({
       edit: { featureGroup: drawnItems },
-      draw: {
-        polygon: true,
-        rectangle: true,
-        circle: false,
-        marker: false,
-        polyline: false
-      }
+      draw: { polygon: true, rectangle: true, circle: false, marker: false, polyline: false }
     });
     map.addControl(drawControl);
+
+    let selectedField = null;
 
     map.on(L.Draw.Event.CREATED, function (event) {
       const layer = event.layer;
@@ -216,24 +242,34 @@
       }
     });
 
-    map.on("click", function (e) {
+    map.on("click", () => {
       document.querySelectorAll(".tab-content").forEach(tab => tab.classList.remove("active"));
+      selectedField = null;
     });
 
     drawnItems.on("click", function (e) {
       selectedField = e.layer;
+      showFieldInfo();
+    });
+
+    function showFieldInfo() {
+      if (!selectedField) return;
       document.querySelectorAll(".tab-content").forEach(tab => tab.classList.remove("active"));
       document.getElementById("fieldLabelTitle").textContent = selectedField.fieldLabel;
       document.getElementById("todoList").innerHTML = "";
+
       selectedField.tasks.forEach((task, i) => {
         const item = document.createElement("div");
         item.className = "todo-item";
-        item.innerHTML = `<input type="checkbox" ${task.done ? "checked" : ""} onchange="toggleTask(${i})">
-                          <span>${task.text}</span>`;
+        item.innerHTML = `
+          <input type="checkbox" ${task.done ? "checked" : ""} onchange="toggleTask(${i})">
+          <span onclick="editTask(${i})">${task.text}</span>
+          <button onclick="removeTask(${i})">✕</button>`;
         document.getElementById("todoList").appendChild(item);
       });
+
       document.getElementById("fieldInfo").classList.add("active");
-    });
+    }
 
     function addTask() {
       if (!selectedField) return;
@@ -241,13 +277,43 @@
       if (!text) return;
       selectedField.tasks.push({ text, done: false });
       document.getElementById("taskInput").value = "";
-      selectedField.fire("click");
+      showFieldInfo();
     }
 
     function toggleTask(index) {
       if (selectedField) {
         selectedField.tasks[index].done = !selectedField.tasks[index].done;
       }
+    }
+
+    function removeTask(index) {
+      if (selectedField) {
+        selectedField.tasks.splice(index, 1);
+        showFieldInfo();
+      }
+    }
+
+    function editTask(index) {
+      if (!selectedField) return;
+      const current = selectedField.tasks[index].text;
+      const updated = prompt("Edit task:", current);
+      if (updated !== null) {
+        selectedField.tasks[index].text = updated.trim();
+        showFieldInfo();
+      }
+    }
+
+    function deleteField() {
+      if (selectedField && confirm("Delete this field?")) {
+        drawnItems.removeLayer(selectedField);
+        selectedField = null;
+        document.getElementById("fieldInfo").classList.remove("active");
+      }
+    }
+
+    function toggleFieldInfo() {
+      document.getElementById("fieldInfo").classList.remove("active");
+      selectedField = null;
     }
 
     renderFarmList();
