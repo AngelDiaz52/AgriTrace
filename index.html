@@ -12,13 +12,11 @@
       margin: 0;
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     }
-
     #container {
       display: flex;
       height: 100%;
       overflow: hidden;
     }
-
     #sidebar {
       width: 320px;
       transition: width 0.3s ease;
@@ -34,13 +32,11 @@
       min-width: 200px;
       max-width: 500px;
     }
-
     #sidebar.collapsed {
       width: 0 !important;
       padding: 0;
       overflow: hidden;
     }
-
     #toggle-sidebar {
       position: absolute;
       top: 10px;
@@ -51,31 +47,27 @@
       border: none;
       border-radius: 4px;
       color: white;
-      font-size: 16px;
+      font-size: 18px;
       font-weight: bold;
       cursor: pointer;
       z-index: 1100;
     }
-
     #map {
       flex-grow: 1;
       height: 100%;
     }
-
     h2 {
       color: #27ae60;
       font-weight: 700;
       font-size: 1.8rem;
       margin-bottom: 0.2rem;
     }
-
     .slogan {
       font-size: 0.95rem;
       font-weight: 500;
       margin-bottom: 1rem;
       color: #555;
     }
-
     input, button {
       margin: 5px 0;
       padding: 8px;
@@ -83,21 +75,18 @@
       width: 100%;
       box-sizing: border-box;
     }
-
     .farm-list { margin-top: 10px; }
     .farm-item {
       cursor: pointer;
       padding: 5px;
       border-bottom: 1px solid #eee;
     }
-
     .field-label {
       background: rgba(255,255,255,0.7);
       padding: 2px 4px;
       border-radius: 3px;
       font-size: 0.8rem;
     }
-
     .todo-list { margin-top: 10px; }
     .todo-item {
       display: flex;
@@ -109,10 +98,8 @@
       flex-grow: 1;
       cursor: pointer;
     }
-
     .tab-content { display: none; }
     .tab-content.active { display: block; }
-
     .field-buttons {
       display: flex;
       gap: 10px;
@@ -150,35 +137,24 @@
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script>
-    const accessToken = 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NmNmcTA2emYycXBndHRqcmZ3N3gifQ.TD1w2PO7kxDyzgP7N8nIMg';
-    const satellite = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=${accessToken}`, {
-      attribution: '© Mapbox © OpenStreetMap',
-      tileSize: 512,
-      zoomOffset: -1
+    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri'
     });
-    const streets = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${accessToken}`, {
-      attribution: '© Mapbox © OpenStreetMap',
-      tileSize: 512,
-      zoomOffset: -1
+    const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
     });
 
-    let map = L.map('map', {
+    const map = L.map('map', {
       center: [47.6062, -122.3321],
       zoom: 10,
       layers: [satellite]
     });
 
-    const baseLayers = {
-      "Satellite": satellite,
-      "Streets": streets
-    };
-    L.control.layers(baseLayers).addTo(map);
+    L.control.layers({ "Satellite": satellite, "Streets": streets }).addTo(map);
 
     const sidebar = document.getElementById('sidebar');
     const toggleBtn = document.getElementById('toggle-sidebar');
-    toggleBtn.onclick = () => {
-      sidebar.classList.toggle('collapsed');
-    };
+    toggleBtn.onclick = () => sidebar.classList.toggle('collapsed');
 
     let farms = JSON.parse(localStorage.getItem('farms') || '[]');
     const saveFarms = () => localStorage.setItem('farms', JSON.stringify(farms));
