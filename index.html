@@ -133,12 +133,12 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script>
-    mapboxgl.accessToken = 'pk.eyJ1IjoiYW5nZWxkaWF6NTIiLCJhIjoiY21jYTJ3bjF5MXBmYzJrcHcwM2Y5ZW14YSJ9.hfBzEthhzvozXmNeDApGtg';
+    const mapboxToken = 'pk.eyJ1IjoiYW5nZWxkaWF6NTIiLCJhIjoiY21jYTJ3bjF5MXBmYzJrcHcwM2Y5ZW14YSJ9.hfBzEthhzvozXmNeDApGtg';
 
     const map = L.map('map').setView([47.608013, -122.335167], 10);
     let currentStyle = 'satellite-streets-v12';
 
-    const tileLayer = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/${currentStyle}/tiles/{z}/{x}/{y}?access_token=${mapboxgl.accessToken}`, {
+    const tileLayer = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/${currentStyle}/tiles/512/{z}/{x}/{y}@2x?access_token=${mapboxToken}`, {
       tileSize: 512,
       zoomOffset: -1,
       attribution: '© Mapbox © OpenStreetMap'
@@ -154,7 +154,7 @@
 
     map.on('click', () => {
       currentStyle = currentStyle.includes("satellite") ? "streets-v12" : "satellite-streets-v12";
-      tileLayer.setUrl(`https://api.mapbox.com/styles/v1/mapbox/${currentStyle}/tiles/{z}/{x}/{y}?access_token=${mapboxgl.accessToken}`);
+      tileLayer.setUrl(`https://api.mapbox.com/styles/v1/mapbox/${currentStyle}/tiles/512/{z}/{x}/{y}@2x?access_token=${mapboxToken}`);
     });
 
     const farmList = document.getElementById("farmList");
