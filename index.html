@@ -9,22 +9,22 @@
   <style>
     html, body {
       margin: 0;
+      padding: 0;
       height: 100%;
       font-family: "Segoe UI", sans-serif;
+      overflow: hidden;
     }
 
     #container {
       display: flex;
       height: 100vh;
-      overflow: hidden;
+      width: 100vw;
     }
 
     #sidebar {
       width: 320px;
-      min-width: 200px;
-      max-width: 500px;
-      background: #ffffff;
-      border-right: 1px solid #ddd;
+      background-color: #f9fef9;
+      border-right: 2px solid #27ae60;
       display: flex;
       flex-direction: column;
       overflow-y: auto;
@@ -38,21 +38,24 @@
       left: 320px;
       width: 30px;
       height: 30px;
-      background-color: #ccc;
+      background-color: #d0f0d0;
       border-radius: 5px;
-      border: none;
+      border: 1px solid #27ae60;
       cursor: pointer;
       z-index: 1001;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: left 0.3s ease;
     }
 
     #toggleSidebar span {
-      font-size: 16px;
+      font-size: 18px;
       font-weight: bold;
       color: black;
+    }
+
+    #map {
+      flex-grow: 1;
     }
 
     .collapsed #sidebar {
@@ -63,70 +66,58 @@
       left: 10px !important;
     }
 
-    #map {
-      flex-grow: 1;
-    }
-
     h1 {
       font-size: 1.8rem;
-      color: #2c3e50;
-      margin: 10px 15px 5px;
+      color: #27ae60;
+      margin: 15px;
     }
 
     .slogan {
       font-size: 0.9rem;
-      color: #27ae60;
+      color: #2c3e50;
       font-style: italic;
-      margin: 0 15px 15px;
+      margin: 0 15px 10px;
     }
 
     .section {
       padding: 10px 15px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid #ddd;
     }
 
-    #fieldModal {
-      display: none;
-      position: fixed;
-      z-index: 2000;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      border: 2px solid #27ae60;
-      padding: 20px;
-      border-radius: 10px;
-      width: 300px;
-    }
-
-    #fieldModal input, #fieldModal select {
+    .section input, .section button {
       width: 100%;
       margin-bottom: 10px;
-      padding: 5px;
+      padding: 6px;
+      font-size: 14px;
     }
 
-    #fieldModal button {
-      padding: 5px;
-      width: 100%;
+    .farm-block {
+      margin-bottom: 10px;
     }
 
     .farm-fields {
       margin-left: 10px;
       font-size: 0.9rem;
-      color: #444;
     }
 
-    .field-label {
-      font-weight: bold;
-      margin-bottom: 5px;
+    #fieldModal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border: 2px solid #27ae60;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     }
 
-    .field-entry {
-      margin-left: 10px;
-    }
-
-    button {
-      margin-right: 5px;
+    #fieldModal input, #fieldModal select, #fieldModal button {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 6px;
     }
   </style>
 </head>
@@ -173,41 +164,29 @@
     attribution: '© Mapbox'
   }).addTo(map);
 
-  const street = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`, {
+  const streets = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`, {
     tileSize: 512,
     zoomOffset: -1
   });
 
-  const baseLayers = { "Satellite": satellite, "Streets": street };
-  L.control.layers(baseLayers).addTo(map);
+  const baseMaps = {
+    "Satellite": satellite,
+    "Streets": streets
+  };
+
+  L.control.layers(baseMaps).addTo(map);
 
   const drawnItems = L.featureGroup().addTo(map);
   let currentFarm = null;
   let tempLayer = null;
+
   const farms = JSON.parse(localStorage.getItem("farms") || "{}");
 
   function toggleSidebar() {
     document.body.classList.toggle("collapsed");
     document.querySelector("#toggleSidebar span").innerHTML =
-      document.body.classList.contains("collapsed") ? "&rarr;" : "&larr;";
-  }
-
-  function updateFarmList() {
-    const list = document.getElementById("farmList");
-    list.innerHTML = '';
-    for (const id in farms) {
-      const farm = farms[id];
-      const div = document.createElement('div');
-      div.innerHTML = `
-        <strong>${farm.name}</strong><br/>
-        <button onclick="centerFarm('${id}')">View</button>
-        <button onclick="deleteFarm('${id}')">Delete</button>
-        <div class="farm-fields">
-          ${farm.fields.map(f => `<div>${f.name} (${f.crop}) — ${f.type}</div>`).join('')}
-        </div><hr/>
-      `;
-      list.appendChild(div);
-    }
+      document.body.classList.contains("collapsed") ? "→" : "←";
+    setTimeout(() => map.invalidateSize(), 310);
   }
 
   async function geocode(address) {
@@ -217,18 +196,37 @@
   }
 
   async function addFarm() {
-    const name = document.getElementById("farmName").value;
-    const zip = document.getElementById("farmZIP").value;
-    if (!name || !zip) return alert("Enter farm name and address/ZIP.");
+    const name = document.getElementById("farmName").value.trim();
+    const zip = document.getElementById("farmZIP").value.trim();
+    if (!name || !zip) return alert("Please enter both farm name and ZIP/address.");
 
     const coords = await geocode(zip);
-    if (!coords) return alert("Address not found.");
+    if (!coords) return alert("Could not locate that address.");
 
     const id = `farm-${Date.now()}`;
     farms[id] = { name, center: coords, fields: [] };
     localStorage.setItem("farms", JSON.stringify(farms));
     updateFarmList();
     map.setView(coords, 16);
+  }
+
+  function updateFarmList() {
+    const list = document.getElementById("farmList");
+    list.innerHTML = '';
+    for (const id in farms) {
+      const farm = farms[id];
+      const div = document.createElement('div');
+      div.classList.add("farm-block");
+      div.innerHTML = `
+        <strong>${farm.name}</strong><br/>
+        <button onclick="centerFarm('${id}')">View</button>
+        <button onclick="deleteFarm('${id}')">Delete</button>
+        <div class="farm-fields">
+          ${farm.fields.map(f => `<div>- ${f.name} (${f.crop}) [${f.type}]</div>`).join('')}
+        </div>
+      `;
+      list.appendChild(div);
+    }
   }
 
   function centerFarm(id) {
@@ -241,7 +239,7 @@
   }
 
   function deleteFarm(id) {
-    if (confirm(`Delete farm "${farms[id].name}"? This cannot be undone.`)) {
+    if (confirm(`Are you sure you want to delete "${farms[id].name}"?`)) {
       delete farms[id];
       localStorage.setItem("farms", JSON.stringify(farms));
       drawnItems.clearLayers();
@@ -251,8 +249,8 @@
   }
 
   function saveFieldDetails() {
-    const name = document.getElementById("fieldName").value;
-    const crop = document.getElementById("cropType").value;
+    const name = document.getElementById("fieldName").value.trim();
+    const crop = document.getElementById("cropType").value.trim();
     const type = document.getElementById("fieldType").value;
     if (!name || !crop || !type || !tempLayer || !currentFarm) return;
 
@@ -270,9 +268,9 @@
     updateFarmList();
   }
 
-  map.on('draw:created', (e) => {
+  map.on('draw:created', function (e) {
     if (!currentFarm) {
-      alert("Please select a farm first.");
+      alert("Please select a farm before drawing.");
       return;
     }
     tempLayer = e.layer;
@@ -283,8 +281,8 @@
     draw: {
       polygon: true,
       rectangle: true,
-      polyline: false,
       marker: false,
+      polyline: false,
       circle: false,
       circlemarker: false
     },
