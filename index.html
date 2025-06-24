@@ -7,18 +7,15 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
   <style>
-    body, html {
-      margin: 0;
+    html, body {
       height: 100%;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
     }
-
     #container {
       display: flex;
-      height: 100vh;
+      height: 100%;
       overflow: hidden;
     }
-
     #sidebar {
       width: 320px;
       transition: all 0.3s ease;
@@ -35,13 +32,11 @@
       min-width: 200px;
       max-width: 500px;
     }
-
     #sidebar.collapsed {
       width: 0 !important;
       padding: 0;
       overflow: hidden;
     }
-
     #toggle-sidebar {
       position: absolute;
       top: 10px;
@@ -58,16 +53,14 @@
       cursor: pointer;
       z-index: 1001;
     }
-
     #toggle-sidebar span {
       font-size: 18px;
       color: #000;
     }
-
     #map {
       flex-grow: 1;
+      height: 100%;
     }
-
     input, button {
       margin: 5px 0;
       padding: 8px;
@@ -75,48 +68,31 @@
       width: 100%;
       box-sizing: border-box;
     }
-
-    .farm-list {
-      margin-top: 10px;
-    }
-
+    .farm-list { margin-top: 10px; }
     .farm-item {
       cursor: pointer;
       padding: 5px;
       border-bottom: 1px solid #eee;
     }
-
     .field-label {
       background: rgba(255,255,255,0.7);
       padding: 2px 4px;
       border-radius: 3px;
       font-size: 0.8rem;
     }
-
-    .todo-list {
-      margin-top: 10px;
-    }
-
+    .todo-list { margin-top: 10px; }
     .todo-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 5px 0;
     }
-
     .todo-item span {
       flex-grow: 1;
       cursor: pointer;
     }
-
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
     .field-buttons {
       display: flex;
       gap: 10px;
@@ -132,9 +108,7 @@
       <input id="farmName" placeholder="Farm Name" />
       <input id="zipInput" placeholder="ZIP or Address" />
       <button onclick="addFarm()">Add Farm</button>
-
       <div class="farm-list" id="farmList"></div>
-
       <div class="tab-content" id="fieldInfo">
         <h3 id="fieldLabelTitle"></h3>
         <input id="taskInput" placeholder="Add task..." />
@@ -152,12 +126,17 @@
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script>
-    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles © Esri'
+    // Satellite and street tiles from Mapbox
+    const accessToken = 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NmNmcTA2emYycXBndHRqcmZ3N3gifQ.TD1w2PO7kxDyzgP7N8nIMg';
+    const satellite = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=${accessToken}`, {
+      attribution: '© Mapbox © OpenStreetMap',
+      tileSize: 512,
+      zoomOffset: -1
     });
-
-    const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
+    const streets = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${accessToken}`, {
+      attribution: '© Mapbox © OpenStreetMap',
+      tileSize: 512,
+      zoomOffset: -1
     });
 
     let map = L.map('map', {
@@ -167,8 +146,8 @@
     });
 
     const baseLayers = {
-      "Satellite (Esri)": satellite,
-      "Streets (OSM)": streets
+      "Satellite": satellite,
+      "Streets": streets
     };
     L.control.layers(baseLayers).addTo(map);
 
@@ -187,7 +166,6 @@
       const name = document.getElementById("farmName").value.trim();
       const zip = document.getElementById("zipInput").value.trim();
       if (!name || !zip) return;
-
       fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(zip)}`)
         .then(res => res.json())
         .then(data => {
@@ -200,7 +178,6 @@
             map.setView([lat, lon], 14);
           }
         });
-
       document.getElementById("farmName").value = "";
       document.getElementById("zipInput").value = "";
     }
@@ -208,7 +185,7 @@
     function renderFarmList() {
       const list = document.getElementById("farmList");
       list.innerHTML = '';
-      farms.forEach((farm) => {
+      farms.forEach(farm => {
         const item = document.createElement("div");
         item.className = "farm-item";
         item.textContent = `${farm.name} (${farm.zip})`;
@@ -252,7 +229,6 @@
       document.querySelectorAll(".tab-content").forEach(tab => tab.classList.remove("active"));
       document.getElementById("fieldLabelTitle").textContent = selectedField.fieldLabel;
       document.getElementById("todoList").innerHTML = "";
-
       selectedField.tasks.forEach((task, i) => {
         const item = document.createElement("div");
         item.className = "todo-item";
@@ -262,7 +238,6 @@
           <button onclick="removeTask(${i})">✕</button>`;
         document.getElementById("todoList").appendChild(item);
       });
-
       document.getElementById("fieldInfo").classList.add("active");
     }
 
@@ -276,9 +251,7 @@
     }
 
     function toggleTask(index) {
-      if (selectedField) {
-        selectedField.tasks[index].done = !selectedField.tasks[index].done;
-      }
+      if (selectedField) selectedField.tasks[index].done = !selectedField.tasks[index].done;
     }
 
     function removeTask(index) {
