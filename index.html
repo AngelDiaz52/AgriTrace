@@ -15,10 +15,14 @@
     #container {
       display: flex;
       height: 100%;
+      width: 100%;
       overflow: hidden;
+      position: relative;
     }
     #sidebar {
       width: 320px;
+      min-width: 200px;
+      max-width: 500px;
       transition: width 0.3s ease;
       background: #ffffff;
       border-right: 1px solid #ccc;
@@ -28,14 +32,19 @@
       flex-direction: column;
       overflow-y: auto;
       z-index: 1000;
-      resize: horizontal;
-      min-width: 200px;
-      max-width: 500px;
     }
     #sidebar.collapsed {
       width: 0 !important;
       padding: 0;
       overflow: hidden;
+    }
+    #resizer {
+      width: 5px;
+      cursor: ew-resize;
+      background: #ccc;
+    }
+    #sidebar.collapsed + #resizer {
+      display: none;
     }
     #toggle-sidebar {
       position: absolute;
@@ -113,13 +122,10 @@
     <div id="sidebar">
       <h2>🌱 Agri Trace</h2>
       <div class="slogan">Smart farming. Simple tools.</div>
-
       <input id="farmName" placeholder="Farm Name" />
       <input id="zipInput" placeholder="ZIP or Address" />
       <button onclick="addFarm()">Add Farm</button>
-
       <div class="farm-list" id="farmList"></div>
-
       <div class="tab-content" id="fieldInfo">
         <h3 id="fieldLabelTitle"></h3>
         <input id="taskInput" placeholder="Add task..." />
@@ -131,6 +137,7 @@
         </div>
       </div>
     </div>
+    <div id="resizer"></div>
     <div id="map"></div>
   </div>
 
@@ -138,30 +145,47 @@
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script>
     const accessToken = 'pk.eyJ1IjoiZGVtb3VzZXIiLCJhIjoiY2p6dnZ0MGFkMDExdzN5cG81OGp6YXVrMSJ9.cXO1GlKvTZfRHbEJAwtnLg';
-
     const satellite = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=${accessToken}`, {
       attribution: '© Mapbox © OpenStreetMap',
       tileSize: 512,
       zoomOffset: -1
     });
-
     const streets = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${accessToken}`, {
       attribution: '© Mapbox © OpenStreetMap',
       tileSize: 512,
       zoomOffset: -1
     });
-
     const map = L.map('map', {
       center: [47.6062, -122.3321],
       zoom: 10,
       layers: [satellite]
     });
-
     L.control.layers({ "Satellite": satellite, "Streets": streets }).addTo(map);
 
     const sidebar = document.getElementById('sidebar');
+    const resizer = document.getElementById('resizer');
     const toggleBtn = document.getElementById('toggle-sidebar');
     toggleBtn.onclick = () => sidebar.classList.toggle('collapsed');
+
+    // Drag to resize
+    resizer.addEventListener('mousedown', function (e) {
+      document.body.style.cursor = 'ew-resize';
+      const startX = e.clientX;
+      const startWidth = sidebar.offsetWidth;
+      function doDrag(e) {
+        const newWidth = startWidth + (e.clientX - startX);
+        if (newWidth >= 200 && newWidth <= 500) {
+          sidebar.style.width = newWidth + 'px';
+        }
+      }
+      function stopDrag() {
+        document.body.style.cursor = '';
+        document.removeEventListener('mousemove', doDrag);
+        document.removeEventListener('mouseup', stopDrag);
+      }
+      document.addEventListener('mousemove', doDrag);
+      document.addEventListener('mouseup', stopDrag);
+    });
 
     let farms = JSON.parse(localStorage.getItem('farms') || '[]');
     const saveFarms = () => localStorage.setItem('farms', JSON.stringify(farms));
