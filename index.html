@@ -4,22 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Agri Trace</title>
-  <link href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" rel="stylesheet" />
-  <link href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" rel="stylesheet" />
+  <link href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" rel="stylesheet"/>
+  <link href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" rel="stylesheet"/>
   <style>
     html, body {
       margin: 0;
       height: 100%;
       font-family: "Segoe UI", sans-serif;
+      overflow: hidden;
     }
-
     #container {
       display: flex;
       height: 100vh;
       width: 100vw;
-      overflow: hidden;
     }
-
     #sidebar {
       width: 320px;
       min-width: 200px;
@@ -32,14 +30,12 @@
       resize: horizontal;
       transition: width 0.3s ease;
     }
-
     #toggleSidebar {
-      position: absolute;
+      position: fixed;
       top: 10px;
-      left: 320px;
-      width: 30px;
       height: 30px;
-      background-color: #d0f0d0;
+      width: 30px;
+      background: #d0f0d0;
       border: 1px solid #27ae60;
       border-radius: 5px;
       cursor: pointer;
@@ -47,58 +43,41 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: left 0.3s ease;
     }
-
     #toggleSidebar span {
       font-size: 18px;
       font-weight: bold;
       color: black;
     }
-
-    .collapsed #sidebar {
-      width: 0 !important;
-    }
-
-    .collapsed #toggleSidebar {
-      left: 10px !important;
-    }
-
     #map {
       flex-grow: 1;
-      height: 100%;
-      width: 100%;
     }
-
     h1 {
       font-size: 1.8rem;
       color: #27ae60;
       margin: 15px;
     }
-
     .slogan {
       font-size: 0.9rem;
       color: #2c3e50;
       font-style: italic;
       margin: 0 15px 10px;
     }
-
     .section {
       padding: 10px 15px;
       border-bottom: 1px solid #ddd;
     }
-
     .section input, .section button {
       width: 100%;
       margin-bottom: 10px;
       padding: 6px;
       font-size: 14px;
     }
-
     .farm-fields {
       margin-left: 10px;
       font-size: 0.9rem;
     }
-
     #fieldModal {
       display: none;
       position: fixed;
@@ -113,7 +92,6 @@
       width: 300px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     }
-
     #fieldModal input, #fieldModal select, #fieldModal button {
       width: 100%;
       margin-bottom: 10px;
@@ -127,17 +105,13 @@
     <h1>Agri Trace</h1>
     <p class="slogan">Precision meets productivity.</p>
     <div class="section">
-      <input id="farmName" placeholder="Farm name" />
-      <input id="farmZIP" placeholder="ZIP or Address" />
+      <input id="farmName" placeholder="Farm name"/>
+      <input id="farmZIP" placeholder="ZIP or Address"/>
       <button onclick="addFarm()">Add Farm</button>
     </div>
     <div class="section" id="farmList"></div>
   </div>
-
-  <button id="toggleSidebar" onclick="toggleSidebar()">
-    <span>&larr;</span>
-  </button>
-
+  <button id="toggleSidebar" onclick="toggleSidebar()"><span>&larr;</span></button>
   <div id="map"></div>
 </div>
 
@@ -155,16 +129,16 @@
 <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script>
-  const token = 'pk.eyJ1IjoiYW5nZWxkaWF6NTIiLCJhIjoiY21jYTNobzR6MDIyaDJ5cHQ1enpiZDN3NSJ9.ANupH-_KNxGYFc4efzpFmg';
+  const mapboxToken = 'pk.eyJ1IjoiYW5nZWxkaWF6NTIiLCJhIjoiY21jYTJ3bjF5MXBmYzJrcHcwM2Y5ZW14YSJ9.hfBzEthhzvozXmNeDApGtg';
   const map = L.map('map').setView([47.6062, -122.3321], 13);
 
-  const satellite = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=${token}`, {
+  const satellite = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`, {
     tileSize: 512,
     zoomOffset: -1,
     attribution: '© Mapbox'
   }).addTo(map);
 
-  const streets = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${token}`, {
+  const streets = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`, {
     tileSize: 512,
     zoomOffset: -1
   });
@@ -176,11 +150,22 @@
   let tempLayer = null;
   const farms = JSON.parse(localStorage.getItem("farms") || "{}");
 
+  function repositionToggle() {
+    const sidebarWidth = document.getElementById('sidebar').offsetWidth;
+    document.getElementById('toggleSidebar').style.left = sidebarWidth + 10 + 'px';
+  }
+
   function toggleSidebar() {
     document.body.classList.toggle("collapsed");
-    document.querySelector("#toggleSidebar span").innerText = document.body.classList.contains("collapsed") ? "→" : "←";
-    setTimeout(() => map.invalidateSize(), 300);
+    const arrow = document.querySelector("#toggleSidebar span");
+    arrow.innerText = document.body.classList.contains("collapsed") ? "→" : "←";
+    setTimeout(() => {
+      map.invalidateSize();
+      repositionToggle();
+    }, 300);
   }
+
+  new ResizeObserver(repositionToggle).observe(document.getElementById('sidebar'));
 
   async function geocode(address) {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${address}`);
@@ -191,9 +176,9 @@
   async function addFarm() {
     const name = document.getElementById("farmName").value.trim();
     const zip = document.getElementById("farmZIP").value.trim();
-    if (!name || !zip) return alert("Enter farm name and address/ZIP.");
+    if (!name || !zip) return alert("Please enter farm name and ZIP.");
     const coords = await geocode(zip);
-    if (!coords) return alert("Could not find location.");
+    if (!coords) return alert("Location not found.");
     const id = `farm-${Date.now()}`;
     farms[id] = { name, center: coords, fields: [] };
     localStorage.setItem("farms", JSON.stringify(farms));
@@ -251,7 +236,7 @@
 
   map.on('draw:created', (e) => {
     if (!currentFarm) {
-      alert("Please select a farm first.");
+      alert("Select a farm first.");
       return;
     }
     tempLayer = e.layer;
@@ -262,17 +247,16 @@
     draw: {
       polygon: true,
       rectangle: true,
-      marker: false,
       polyline: false,
+      marker: false,
       circle: false,
       circlemarker: false
     },
-    edit: {
-      featureGroup: drawnItems
-    }
+    edit: { featureGroup: drawnItems }
   }).addTo(map);
 
   updateFarmList();
+  repositionToggle();
 </script>
 </body>
 </html>
